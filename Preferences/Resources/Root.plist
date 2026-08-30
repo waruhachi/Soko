@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Widgets</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>id</key>
+			<string>widgetOffset</string>
+			<key>default</key>
+			<real>-18</real>
+			<key>defaults</key>
+			<string>moe.waru.soko.preferences</string>
+			<key>key</key>
+			<string>widgetOffset</string>
+			<key>min</key>
+			<real>-120</real>
+			<key>max</key>
+			<real>120</real>
+			<key>showValue</key>
+			<true/>
+			<key>isContinuous</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Reset Widget Offset</string>
+			<key>action</key>
+			<string>resetWidgetOffset</string>
+			<key>confirmation</key>
+			<dict>
+				<key>prompt</key>
+				<string>Are you sure you want to continue?</string>
+				<key>title</key>
+				<string>Reset Widget Offset</string>
+				<key>cancelTitle</key>
+				<string>Cancel</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Notifications</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>id</key>
+			<string>notificationOffset</string>
+			<key>default</key>
+			<real>60</real>
+			<key>defaults</key>
+			<string>moe.waru.soko.preferences</string>
+			<key>key</key>
+			<string>notificationOffset</string>
+			<key>min</key>
+			<real>-120</real>
+			<key>max</key>
+			<real>120</real>
+			<key>showValue</key>
+			<true/>
+			<key>isContinuous</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Reset Notification Offset</string>
+			<key>action</key>
+			<string>resetNotificationOffset</string>
+			<key>confirmation</key>
+			<dict>
+				<key>prompt</key>
+				<string>Are you sure you want to continue?</string>
+				<key>title</key>
+				<string>Reset Notification Offset</string>
+				<key>cancelTitle</key>
+				<string>Cancel</string>
+			</dict>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>Soko</string>
+</dict>
+</plist>

@@ -1,0 +1,8 @@
+{
+	"editor.formatOnSave": true,
+	"sourcekit-lsp.serverPath": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
+	"sourcekit-lsp.toolchainPath": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
+	"[swift]": {
+		"editor.defaultFormatter": "pvasek.sourcekit-lsp--dev-unofficial"
+	},
+}

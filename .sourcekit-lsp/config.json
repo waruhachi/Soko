@@ -1,0 +1,28 @@
+{
+	"fallbackBuildSystem": {
+		"swiftCompilerFlags": [
+			"-sdk",
+			"/Users/waruhachi/theos/sdks/iPhoneOS16.5.sdk",
+			"-target",
+			"arm64-apple-ios16.5",
+			"-I",
+			"/Users/waruhachi/theos/vendor/headers",
+			"-I",
+			"/Users/waruhachi/theos/vendor/include",
+			"-I",
+			"/Users/waruhachi/theos/include",
+			"-F",
+			"/Users/waruhachi/theos/vendor/lib",
+			"-F",
+			"/Users/waruhachi/theos/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks",
+			"-Xcc",
+			"-include",
+			"-Xcc",
+			"/Users/waruhachi/theos/Prefix.pch",
+			"-Xcc",
+			"-fmodules",
+			"-Xcc",
+			"-fcxx-modules"
+		]
+	}
+}
