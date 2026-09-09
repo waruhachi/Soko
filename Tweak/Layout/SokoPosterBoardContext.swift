@@ -10,24 +10,12 @@ extension SokoLayout {
 			if let targetClass = objc_getClass(className) as? AnyClass,
 				let match = ancestor(of: view, matching: targetClass)
 			{
-				PosterBoardDebugLog.emit(
-					"preview-container-cell",
-					every: 1,
-					"matched preview container class=\(className) "
-						+ PosterBoardDebugLog.describe(match)
-				)
 				return match
 			}
 		}
 
 		if let match = ancestor(of: view, classNameContaining: "LockScreenPosterCollectionViewCell")
 		{
-			PosterBoardDebugLog.emit(
-				"preview-container-cell-fragment",
-				every: 1,
-				"matched preview container by cell fragment "
-					+ PosterBoardDebugLog.describe(match)
-			)
 			return match
 		}
 
@@ -38,64 +26,15 @@ extension SokoLayout {
 			if let targetClass = objc_getClass(className) as? AnyClass,
 				let match = ancestor(of: view, matching: targetClass)
 			{
-				PosterBoardDebugLog.emit(
-					"preview-container-rack",
-					every: 1,
-					"matched preview container class=\(className) "
-						+ PosterBoardDebugLog.describe(match)
-				)
 				return match
 			}
 		}
 
 		if let match = ancestor(of: view, classNameContaining: "PosterRackCollectionView") {
-			PosterBoardDebugLog.emit(
-				"preview-container-rack-fragment",
-				every: 1,
-				"matched preview container by rack fragment "
-					+ PosterBoardDebugLog.describe(match)
-			)
 			return match
 		}
 
-		PosterBoardDebugLog.emit(
-			"preview-container-missing",
-			every: 1,
-			"no preview container matched ancestry=\(viewAncestryDescription(view))"
-		)
 		return nil
-	}
-
-	static func posterBoardAnchorContainer(
-		for view: UIView,
-		controller: UIViewController
-	) -> UIView? {
-		if let previewContainer = posterBoardPreviewContainer(for: view) {
-			PosterBoardDebugLog.emit(
-				"anchor-container-preview",
-				every: 1,
-				"using preview anchor " + PosterBoardDebugLog.describe(previewContainer)
-			)
-			return previewContainer
-		}
-
-		if controller.view !== view {
-			PosterBoardDebugLog.emit(
-				"anchor-container-controller-view",
-				every: 1,
-				"using controller.view anchor "
-					+ PosterBoardDebugLog.describe(controller.view)
-			)
-			return controller.view
-		}
-
-		let fallback = controller.view.superview ?? view.window
-		PosterBoardDebugLog.emit(
-			"anchor-container-fallback",
-			every: 1,
-			"using controller root fallback anchor " + PosterBoardDebugLog.describe(fallback)
-		)
-		return fallback
 	}
 
 	static func owningViewController(of view: UIView) -> UIViewController? {
@@ -114,29 +53,12 @@ extension SokoLayout {
 			view.window != nil
 		else { return false }
 
-		let mediaControlsVisible = mediaControlsAreVisible(near: view)
-		PosterBoardDebugLog.emit(
-			"media-controls-visibility",
-			every: 1,
-			"iOS 16 media controls visible=\(mediaControlsVisible)"
-		)
-		guard mediaControlsVisible else { return false }
+		guard mediaControlsAreVisible(near: view) else { return false }
 		guard let getter = mediaRemoteExpandedPlatterGetter else {
-			PosterBoardDebugLog.emit(
-				"media-remote-expanded-platter-getter-missing",
-				every: 5,
-				"MRPrefersExpandedLockScreenPlatter is unavailable"
-			)
 			return false
 		}
 
-		let expanded = getter()
-		PosterBoardDebugLog.emit(
-			"media-remote-expanded-platter-read",
-			every: 1,
-			"iOS 16 expanded lock-screen platter read=\(expanded)"
-		)
-		return expanded
+		return getter()
 	}
 
 	static func mediaControlsAreVisible(near view: UIView) -> Bool {
@@ -227,16 +149,6 @@ extension SokoLayout {
 		return nil
 	}
 
-	static func viewAncestryDescription(_ view: UIView) -> String {
-		var names: [String] = []
-		var cursor: UIView? = view
-		while let candidate = cursor, names.count < 16 {
-			names.append(NSStringFromClass(type(of: candidate)))
-			cursor = candidate.superview
-		}
-		return names.joined(separator: " <- ")
-	}
-
 	static func isVisibleInHierarchy(_ view: UIView) -> Bool {
 		guard view.window != nil, !view.bounds.isEmpty else { return false }
 
@@ -248,12 +160,6 @@ extension SokoLayout {
 			cursor = candidate.superview
 		}
 		return true
-	}
-
-	static func isWidgetGridHitTestingView(_ view: UIView) -> Bool {
-		guard let window = view.window, !view.bounds.isEmpty else { return false }
-		let maximumWidgetGridHeight = min(200, window.bounds.height * 0.4)
-		return view.bounds.height <= maximumWidgetGridHeight
 	}
 
 	static func pointsAreApproximatelyEqual(
@@ -271,5 +177,4 @@ extension SokoLayout {
 			&& abs(left.width - right.width) <= 0.5
 			&& abs(left.height - right.height) <= 0.5
 	}
-
 }

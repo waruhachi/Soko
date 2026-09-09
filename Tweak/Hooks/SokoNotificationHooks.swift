@@ -205,21 +205,11 @@ enum MRUserSettingsExpandedLockScreenPlatterHook {
 			return
 		}
 		guard let targetClass = objc_getClass("MRUserSettings") as? AnyClass else {
-			PosterBoardDebugLog.emit(
-				"media-remote-user-settings-class-missing",
-				every: 1,
-				"MRUserSettings is not loaded yet"
-			)
 			return
 		}
 
 		let selector = NSSelectorFromString("setPrefersExpandedLockScreenPlatter:")
 		guard class_getInstanceMethod(targetClass, selector) != nil else {
-			PosterBoardDebugLog.emit(
-				"media-remote-expanded-platter-selector-missing",
-				every: 1,
-				"MRUserSettings.setPrefersExpandedLockScreenPlatter: is unavailable"
-			)
 			return
 		}
 
@@ -227,7 +217,7 @@ enum MRUserSettingsExpandedLockScreenPlatterHook {
 		let hook: HookType = { target, selector, expanded in
 			let orig = unsafeBitCast(Self.origIMP, to: HookType.self)
 			orig(target, selector, expanded)
-			SokoLayout.expandedLockScreenPlatterPreferenceDidChange(expanded)
+			SokoLayout.expandedLockScreenPlatterPreferenceDidChange()
 		}
 
 		MSHookMessageEx(
@@ -237,9 +227,5 @@ enum MRUserSettingsExpandedLockScreenPlatterHook {
 			&origIMP
 		)
 		isHooked = true
-		PosterBoardDebugLog.emit(
-			"media-remote-expanded-platter-hook-installed",
-			"installed iOS 16 MRUserSettings expanded lock-screen platter hook"
-		)
 	}
 }

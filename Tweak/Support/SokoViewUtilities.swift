@@ -6,27 +6,11 @@ extension SokoLayout {
 		guard let prominentViewClass else { return nil }
 
 		return descendants(of: prominentViewClass, under: window)
-			.filter { $0.window != nil && !$0.isHidden && $0.alpha > 0.01 }
+			.filter { isVisibleInHierarchy($0) }
 			.max { left, right in
 				window.convert(left.bounds, from: left).minY
 					< window.convert(right.bounds, from: right).minY
 			}
-	}
-
-	static func quickActionsView(near widget: UIView) -> UIView? {
-		guard let quickActionsViewClass else { return nil }
-
-		var cursor: UIView? = widget
-		while let view = cursor {
-			if let quickActions = firstDescendant(of: quickActionsViewClass, under: view),
-				containsQuickActionButton(quickActions)
-			{
-				return quickActions
-			}
-			cursor = view.superview
-		}
-
-		return nil
 	}
 
 	static func lockScreenContainer(for widget: UIView) -> UIView? {
@@ -50,44 +34,30 @@ extension SokoLayout {
 			? (posterBoardQuickActionTopInset, "quick-actions")
 			: (widgetBottomEdgePadding, "screen-bottom")
 
-		#if DEBUG
-			PosterBoardDebugLog.emit(
-				"editor-anchor-selection",
-				every: 1,
-				"[DEBUG-soko-editor-anchor] nativeSize=(\(nativeSize.width),\(nativeSize.height)) "
-					+ "aspectRatio=\(aspectRatio) "
-					+ "windowSafeAreaBottom=\(view.window?.safeAreaInsets.bottom ?? 0) "
-					+ "mode=\(anchor.1) inset=\(anchor.0)"
-			)
-		#endif
-
 		return (anchor.0, anchor.1)
 	}
 
 	static func quickActionsView(for view: UIView) -> UIView? {
-		guard let quickActionsViewClass else { return nil }
-
-		if let window = view.window,
-			let quickActions = firstVisibleDescendant(of: quickActionsViewClass, under: window)
-		{
-			return quickActions
+		guard let quickActionsViewClass, let buttonClass = quickActionsButtonClass else {
+			return nil
 		}
 
+		let container = lockScreenContainer(for: view)
 		var cursor: UIView? = view
 		while let ancestor = cursor {
-			if let quickActions = firstVisibleDescendant(of: quickActionsViewClass, under: ancestor)
+			if let quickActions = descendants(of: quickActionsViewClass, under: ancestor).first(
+				where: {
+					isVisibleInHierarchy($0)
+						&& firstVisibleDescendant(of: buttonClass, under: $0) != nil
+				})
 			{
 				return quickActions
 			}
+			if ancestor === container { break }
 			cursor = ancestor.superview
 		}
 
 		return nil
-	}
-
-	static func containsQuickActionButton(_ view: UIView) -> Bool {
-		guard let quickActionsButtonClass else { return false }
-		return firstDescendant(of: quickActionsButtonClass, under: view) != nil
 	}
 
 	static func descendants(of targetClass: AnyClass, under view: UIView) -> [UIView] {
@@ -128,7 +98,8 @@ extension SokoLayout {
 		of targetClass: AnyClass,
 		under view: UIView
 	) -> UIView? {
-		if view.isKind(of: targetClass), !view.isHidden, view.alpha > 0.01 {
+		guard !view.isHidden, view.alpha > 0.01 else { return nil }
+		if view.isKind(of: targetClass), isVisibleInHierarchy(view) {
 			return view
 		}
 
@@ -148,7 +119,7 @@ extension SokoLayout {
 		guard let reference = view.window else { return nil }
 
 		return descendants(of: targetClass, under: view)
-			.filter { !$0.isHidden && $0.alpha > 0.01 }
+			.filter { isVisibleInHierarchy($0) }
 			.max { left, right in
 				reference.convert(left.bounds, from: left).maxY
 					< reference.convert(right.bounds, from: right).maxY

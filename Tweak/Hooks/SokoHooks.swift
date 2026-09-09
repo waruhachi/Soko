@@ -27,15 +27,6 @@ enum SokoHooks {
 	static func scheduleHookRetries() {
 		for delay in [0.5, 1.5, 3.0, 6.0] {
 			DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-				PosterBoardDebugLog.emit(
-					"hook-retry-\(Bundle.main.bundleIdentifier ?? "nil")-\(delay)",
-					"running delayed hook install at +\(delay)s "
-						+ "bundle=\(Bundle.main.bundleIdentifier ?? "nil") "
-						+ "prominentClass="
-						+ "\(objc_getClass("CSProminentEmptyElementView") != nil) "
-						+ "prominentDisplayClass="
-						+ "\(objc_getClass("CSProminentDisplayView") != nil)"
-				)
 				install()
 				SokoLayout.refreshVisibleViews()
 			}
@@ -51,9 +42,5 @@ enum SokoHooks {
 		}
 		posterBoardRefreshTimer = timer
 		RunLoop.main.add(timer, forMode: .common)
-		PosterBoardDebugLog.emit(
-			"refresh-monitor-started",
-			"started active PosterBoard refresh monitor interval=0.5s"
-		)
 	}
 }

@@ -20,25 +20,18 @@ extension SokoLayout {
 	) {
 		guard usesIOS16ProminentDisplayCompatibility else { return }
 		guard let row = prominentDisplayComplicationRow(in: display) else {
-			PosterBoardDebugLog.emit(
-				"ios16-prominent-row-missing-\(ObjectIdentifier(display))",
-				every: 1,
-				"iOS 16 prominent display has no complicationRowView "
-					+ PosterBoardDebugLog.describe(display)
-			)
 			return
 		}
 
 		let usesEditingLayout = prominentDisplayUsesEditingLayout(display)
-		PosterBoardDebugLog.emit(
-			"ios16-prominent-row-state-\(ObjectIdentifier(display))",
-			every: 1,
-			"iOS 16 prominent display editing=\(usesEditingLayout) "
-				+ "display=\(PosterBoardDebugLog.describe(display)) "
-				+ "row=\(PosterBoardDebugLog.describe(row))"
-		)
 
 		if usesEditingLayout {
+			objc_setAssociatedObject(
+				row,
+				&knownComplicationRowRelayoutPendingKey,
+				nil,
+				.OBJC_ASSOCIATION_ASSIGN
+			)
 			restoreWidgetConstraints(row)
 			objc_setAssociatedObject(
 				display,
@@ -60,7 +53,8 @@ extension SokoLayout {
 				row,
 				&widgetConstraintsKey
 			) as? [NSLayoutConstraint] ?? []
-		let hasActivePlacement = !placementConstraints.isEmpty
+		let hasActivePlacement =
+			!placementConstraints.isEmpty
 			&& placementConstraints.allSatisfy(\.isActive)
 		if hasActivePlacement {
 			synchronizeButtonlessWidgetPlacement(row, constraints: placementConstraints)
@@ -74,7 +68,7 @@ extension SokoLayout {
 			row,
 			.OBJC_ASSOCIATION_RETAIN_NONATOMIC
 		)
-		scheduleKnownComplicationRowRelayout(row)
+		scheduleKnownComplicationRowRelayout(row, in: display)
 	}
 
 	static func prominentDisplayComplicationRow(in display: UIView) -> UIView? {
@@ -92,29 +86,41 @@ extension SokoLayout {
 		return getter(display, selector)
 	}
 
-	static func scheduleKnownComplicationRowRelayout(_ widget: UIView) {
+	static func scheduleKnownComplicationRowRelayout(_ widget: UIView, in display: UIView) {
 		guard widget.window != nil else { return }
-		guard
-			!associatedBool(
-				for: widget,
-				key: &knownComplicationRowRelayoutPendingKey
-			)
+		guard objc_getAssociatedObject(widget, &knownComplicationRowRelayoutPendingKey) == nil
 		else { return }
 
-		setAssociatedBool(
-			true,
-			for: widget,
-			key: &knownComplicationRowRelayoutPendingKey
+		let request = NSObject()
+		objc_setAssociatedObject(
+			widget,
+			&knownComplicationRowRelayoutPendingKey,
+			request,
+			.OBJC_ASSOCIATION_RETAIN_NONATOMIC
 		)
-		DispatchQueue.main.async {
+		DispatchQueue.main.async { [weak widget, weak display] in
+			guard let widget,
+				objc_getAssociatedObject(widget, &knownComplicationRowRelayoutPendingKey)
+					as? NSObject === request
+			else { return }
 			defer {
-				setAssociatedBool(
-					false,
-					for: widget,
-					key: &knownComplicationRowRelayoutPendingKey
-				)
+				if objc_getAssociatedObject(widget, &knownComplicationRowRelayoutPendingKey)
+					as? NSObject === request
+				{
+					objc_setAssociatedObject(
+						widget,
+						&knownComplicationRowRelayoutPendingKey,
+						nil,
+						.OBJC_ASSOCIATION_ASSIGN
+					)
+				}
 			}
-			guard widget.window != nil else { return }
+			guard let display, widget.window != nil,
+				widget.window === display.window,
+				widget.isDescendant(of: display),
+				prominentDisplayComplicationRow(in: display) === widget,
+				!prominentDisplayUsesEditingLayout(display)
+			else { return }
 			relayoutWidget(widget, isKnownComplicationRow: true)
 		}
 	}
@@ -129,16 +135,22 @@ extension SokoLayout {
 		}
 
 		guard let window = widget.window else { return }
+		if usesIOS16ProminentDisplayCompatibility,
+			let displayClass = prominentDisplayViewClass,
+			let display = ancestor(of: widget, matching: displayClass),
+			prominentDisplayUsesEditingLayout(display)
+		{
+			restoreWidgetConstraints(widget)
+			return
+		}
 		guard isKnownComplicationRow || widget === bottomProminentView(in: window) else {
 			restoreWidgetConstraints(widget)
 			return
 		}
 
-		let quickActions = quickActionsView(near: widget)
+		let quickActions = quickActionsView(for: widget)
 		let quickActionButton: UIView?
 		if let quickActions,
-			!quickActions.isHidden,
-			quickActions.alpha > 0.01,
 			let buttonClass = quickActionsButtonClass
 		{
 			quickActionButton = firstVisibleDescendant(of: buttonClass, under: quickActions)
@@ -190,15 +202,6 @@ extension SokoLayout {
 
 		let verticalConstraint: NSLayoutConstraint
 		if let button = quickActionButton {
-			let buttonFrame = container.convert(button.bounds, from: button)
-			PosterBoardDebugLog.emit(
-				"lockscreen-widget-anchor",
-				every: 1,
-				"lockscreen widget anchor containerHeight=\(container.bounds.height) "
-					+ "quickActionTop=\(buttonFrame.minY) "
-					+ "quickActionTopInset=\(container.bounds.maxY - buttonFrame.minY) "
-					+ "widgetOffset=\(TweakPreferences.shared.preferences.widgetOffset)"
-			)
 			verticalConstraint = widget.bottomAnchor.constraint(
 				equalTo: button.topAnchor,
 				constant: CGFloat(TweakPreferences.shared.preferences.widgetOffset)
@@ -206,13 +209,6 @@ extension SokoLayout {
 		} else {
 			let bottomInset = max(widgetBottomEdgePadding, container.safeAreaInsets.bottom)
 			let widgetOffset = CGFloat(TweakPreferences.shared.preferences.widgetOffset)
-			PosterBoardDebugLog.emit(
-				"lockscreen-widget-bottom-anchor",
-				every: 1,
-				"lockscreen widget screen-bottom anchor containerHeight=\(container.bounds.height) "
-					+ "safeAreaBottom=\(container.safeAreaInsets.bottom) "
-					+ "bottomInset=\(bottomInset) widgetOffset=\(widgetOffset)"
-			)
 			verticalConstraint = widget.bottomAnchor.constraint(
 				equalTo: container.bottomAnchor,
 				constant: widgetOffset - bottomInset
@@ -247,5 +243,4 @@ extension SokoLayout {
 			synchronizeButtonlessWidgetPlacement(widget, constraints: constraints)
 		}
 	}
-
 }

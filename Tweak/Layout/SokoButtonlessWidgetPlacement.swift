@@ -40,13 +40,5 @@ extension SokoLayout {
 		widget.layer.position.x += delta.x
 		widget.layer.position.y += delta.y
 		CATransaction.commit()
-
-		PosterBoardDebugLog.emit(
-			"ios16-buttonless-placement-\(ObjectIdentifier(widget))",
-			every: 1,
-			"iOS 16 repaired buttonless placement previousBottom=\(frame.maxY) "
-				+ "targetBottom=\(targetBottom) deltaY=\(delta.y) "
-				+ "row=\(PosterBoardDebugLog.describe(widget))"
-		)
 	}
 }

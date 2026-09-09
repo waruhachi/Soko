@@ -66,50 +66,14 @@ enum SokoLayout {
 		objc_getClass("PRSubviewHitTestingView") as? AnyClass
 	}
 
-	static var posterBoardWidgetGridControllerClasses: [AnyClass] {
-		let classNames: [String] = [
-			"PRGraphicComplicationContainerViewController",
-			"PRWidgetGridViewController",
-		]
-		return classNames.compactMap { objc_getClass($0) as? AnyClass }
-	}
-
-	static func isPosterBoardWidgetGridController(
-		_ controller: UIViewController
-	) -> Bool {
-		posterBoardWidgetGridControllerClasses.contains {
-			controller.isKind(of: $0)
-		}
-	}
-
 	static func refreshVisibleViews() {
 		let windows = posterBoardWindows()
-		if isPosterBoardProcess {
-			PosterBoardDebugLog.emit(
-				"refresh-visible-views",
-				every: 5,
-				"refreshVisibleViews windows=\(windows.count)"
-			)
-		}
-		if usesIOS16ProminentDisplayCompatibility {
-			PosterBoardDebugLog.emit(
-				"ios16-refresh-visible-views",
-				every: 1,
-				"iOS 16 SpringBoard refreshVisibleViews windows=\(windows.count)"
-			)
-		}
 
 		for window in windows {
 			if usesIOS16ProminentDisplayCompatibility,
 				let prominentDisplayViewClass
 			{
 				let displays = descendants(of: prominentDisplayViewClass, under: window)
-				PosterBoardDebugLog.emit(
-					"ios16-prominent-display-count-\(ObjectIdentifier(window))",
-					every: 1,
-					"iOS 16 SpringBoard window=\(NSStringFromClass(type(of: window))) "
-						+ "prominentDisplayCount=\(displays.count)"
-				)
 				for display in displays {
 					handleProminentDisplayLayout(display, force: true)
 				}
@@ -117,14 +81,6 @@ enum SokoLayout {
 
 			if let prominentViewClass {
 				let widgets = descendants(of: prominentViewClass, under: window)
-				if isPosterBoardProcess {
-					PosterBoardDebugLog.emit(
-						"refresh-prominent-count",
-						every: 1,
-						"window=\(NSStringFromClass(type(of: window))) "
-							+ "prominentCount=\(widgets.count)"
-					)
-				}
 				for widget in widgets {
 					scheduleWidgetRelayout(widget)
 				}
@@ -150,5 +106,4 @@ enum SokoLayout {
 		}
 		return windows
 	}
-
 }

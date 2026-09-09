@@ -21,15 +21,9 @@ extension SokoLayout {
 		}
 	}
 
-	static func expandedLockScreenPlatterPreferenceDidChange(_ expanded: Bool) {
-		PosterBoardDebugLog.emit(
-			"media-remote-expanded-platter-state",
-			"iOS 16 expanded lock-screen platter preference=\(expanded)"
-		)
-
-		let windows = posterBoardWindows()
+	static func expandedLockScreenPlatterPreferenceDidChange() {
 		DispatchQueue.main.async {
-			for window in windows {
+			for window in posterBoardWindows() {
 				refreshNotificationLists(in: window)
 			}
 		}
@@ -58,9 +52,11 @@ extension SokoLayout {
 			return
 		}
 		guard let superview = indicator.superview else { return }
-		guard let quickActions = quickActionsView(for: indicator) else { return }
-		guard let buttonClass = quickActionsButtonClass else { return }
-		guard let button = bottomVisibleDescendant(of: buttonClass, under: quickActions) else {
+		guard let quickActions = quickActionsView(for: indicator),
+			let buttonClass = quickActionsButtonClass,
+			let button = bottomVisibleDescendant(of: buttonClass, under: quickActions)
+		else {
+			restoreNotificationCountIndicatorCenter(indicator)
 			return
 		}
 
@@ -102,8 +98,7 @@ extension SokoLayout {
 
 	static func scheduleMediaControlsGeometrySynchronization(
 		near list: UIView,
-		expanded: Bool,
-		geometryChanged: Bool
+		expanded: Bool
 	) {
 		guard ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 16,
 			let combinedListController = combinedListController(near: list),
@@ -132,16 +127,9 @@ extension SokoLayout {
 		guard !expanded else { return }
 		guard stateChanged else { return }
 
-		PosterBoardDebugLog.emit(
-			"media-controls-layout-scheduled-\(ObjectIdentifier(combinedListController))",
-			"iOS 16 media layout synchronization scheduled expanded=\(expanded) "
-				+ "stateChanged=\(stateChanged) geometryChanged=\(geometryChanged)"
-		)
-
 		DispatchQueue.main.async {
 			guard list.window != nil else { return }
 			synchronizeMediaControlsGeometry(
-				near: list,
 				combinedListController: combinedListController,
 				expanded: expanded
 			)
@@ -149,7 +137,6 @@ extension SokoLayout {
 	}
 
 	static func synchronizeMediaControlsGeometry(
-		near list: UIView,
 		combinedListController: UIViewController,
 		expanded: Bool
 	) {
@@ -178,90 +165,69 @@ extension SokoLayout {
 			)
 		}
 
-		let adjunctBefore = adjunctViewDescription(for: combinedListController)
-		let listBefore = PosterBoardDebugLog.describe(list)
-
-		let insetUpdated = invokeVoidMethod(
+		invokeVoidMethod(
 			"_updateListViewContentInset",
 			on: combinedListController
 		)
-		let offsetUpdated = invokeVoidMethod(
+		invokeVoidMethod(
 			"_updateNotificationListOffsetForExternalUpdate",
 			on: combinedListController
 		)
-		let presentationUpdated = invokeVoidMethod(
+		invokeVoidMethod(
 			"_updatePresentation",
 			on: combinedListController
 		)
 		combinedListController.viewIfLoaded?.setNeedsLayout()
-
-		PosterBoardDebugLog.emit(
-			"media-controls-layout-pass-\(ObjectIdentifier(combinedListController))",
-			"iOS 16 media layout synchronization pass expanded=\(expanded) "
-				+ "inset=\(insetUpdated) "
-				+ "offset=\(offsetUpdated) presentation=\(presentationUpdated) "
-				+ "listBefore={\(listBefore)} listAfter={\(PosterBoardDebugLog.describe(list))} "
-				+ "adjunctBefore={\(adjunctBefore)} "
-				+ "adjunctAfter={\(adjunctViewDescription(for: combinedListController))}"
-		)
 	}
 
 	static func invokeVoidMethod(
 		_ selectorName: String,
 		on controller: UIViewController
-	) -> Bool {
+	) {
 		let selector = NSSelectorFromString(selectorName)
-		guard controller.responds(to: selector) else { return false }
+		guard controller.responds(to: selector) else { return }
 
 		typealias Method = @convention(c) (UIViewController, Selector) -> Void
 		let method = unsafeBitCast(controller.method(for: selector), to: Method.self)
 		method(controller, selector)
-		return true
-	}
-
-	static func adjunctViewDescription(
-		for combinedListController: UIViewController
-	) -> String {
-		let selector = NSSelectorFromString("adjunctListViewController")
-		guard combinedListController.responds(to: selector) else { return "unavailable" }
-
-		typealias Getter = @convention(c) (UIViewController, Selector) -> AnyObject?
-		let getter = unsafeBitCast(combinedListController.method(for: selector), to: Getter.self)
-		guard let controller = getter(combinedListController, selector) as? UIViewController
-		else { return "nil" }
-		return PosterBoardDebugLog.describe(controller.viewIfLoaded)
 	}
 
 	static func relayoutNotificationList(_ list: UIView) {
 		SokoHooks.installNotificationCountIndicatorHooks()
 		MRUserSettingsExpandedLockScreenPlatterHook.hook()
 
-		guard list.window != nil else { return }
+		guard let window = list.window else { return }
 		if isExpandedAlbumArtworkActive(for: list) {
-			let geometryChanged = restoreNotificationListSystemGeometry(list)
+			restoreNotificationListSystemGeometry(list)
 			scheduleMediaControlsGeometrySynchronization(
 				near: list,
-				expanded: true,
-				geometryChanged: geometryChanged
+				expanded: true
 			)
-			PosterBoardDebugLog.emit(
-				"notification-expanded-artwork-\(ObjectIdentifier(list))",
-				every: 1,
-				"iOS 16 expanded album artwork active; using system notification geometry "
-					+ PosterBoardDebugLog.describe(list)
-			)
-			return
-		}
-		guard let quickActions = quickActionsView(for: list) else { return }
-		guard let buttonClass = quickActionsButtonClass else { return }
-		guard let button = bottomVisibleDescendant(of: buttonClass, under: quickActions) else {
 			return
 		}
 		guard let listSuperview = list.superview else { return }
 
-		let buttonFrame = listSuperview.convert(button.bounds, from: button)
-		let targetBottom =
-			buttonFrame.minY + CGFloat(TweakPreferences.shared.preferences.notificationOffset)
+		let notificationOffset = CGFloat(TweakPreferences.shared.preferences.notificationOffset)
+		let targetBottom: CGFloat
+		if let quickActions = quickActionsView(for: list),
+			let buttonClass = quickActionsButtonClass,
+			let button = bottomVisibleDescendant(of: buttonClass, under: quickActions)
+		{
+			let buttonFrame = listSuperview.convert(button.bounds, from: button)
+			targetBottom = buttonFrame.minY + notificationOffset
+		} else {
+			guard window.safeAreaInsets.bottom <= 0.5 else {
+				restoreNotificationListSystemGeometry(list)
+				return
+			}
+			let container = lockScreenContainer(for: list) ?? window
+			let bottomInset = max(widgetBottomEdgePadding, container.safeAreaInsets.bottom)
+			let bottom = CGPoint(x: container.bounds.midX, y: container.bounds.maxY - bottomInset)
+			let defaultOffset = CGFloat(Preferences().notificationOffset)
+			targetBottom =
+				listSuperview.convert(bottom, from: container).y
+				+ notificationOffset - defaultOffset
+		}
 		let currentFrame = list.frame
 		let systemFrame: CGRect
 		if let appliedFrame = associatedRect(
@@ -293,23 +259,19 @@ extension SokoLayout {
 			key: &notificationAppliedFrameKey
 		)
 
-		let geometryChanged = !rectsAreApproximatelyEqual(currentFrame, listFrame)
-		if geometryChanged {
+		if !rectsAreApproximatelyEqual(currentFrame, listFrame) {
 			list.frame = listFrame
 		}
 
 		alignNotificationCountIndicators(in: list)
 		scheduleMediaControlsGeometrySynchronization(
 			near: list,
-			expanded: false,
-			geometryChanged: geometryChanged
+			expanded: false
 		)
 	}
 
-	@discardableResult
-	static func restoreNotificationListSystemGeometry(_ list: UIView) -> Bool {
+	static func restoreNotificationListSystemGeometry(_ list: UIView) {
 		let currentFrame = list.frame
-		var geometryChanged = false
 		if let appliedFrame = associatedRect(
 			for: list,
 			key: &notificationAppliedFrameKey
@@ -318,7 +280,6 @@ extension SokoLayout {
 			!rectsAreApproximatelyEqual(currentFrame, systemFrame)
 		{
 			list.frame = systemFrame
-			geometryChanged = true
 		}
 
 		objc_setAssociatedObject(
@@ -335,12 +296,11 @@ extension SokoLayout {
 		)
 
 		guard let indicatorClass = notificationCountIndicatorClass else {
-			return geometryChanged
+			return
 		}
 		for indicator in descendants(of: indicatorClass, under: list) {
 			restoreNotificationCountIndicatorCenter(indicator)
 		}
-		return geometryChanged
 	}
 
 	static func restoreNotificationCountIndicatorCenter(_ indicator: UIView) {
@@ -383,5 +343,4 @@ extension SokoLayout {
 			.OBJC_ASSOCIATION_RETAIN_NONATOMIC
 		)
 	}
-
 }
