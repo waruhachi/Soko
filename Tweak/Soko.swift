@@ -21,6 +21,7 @@ func tweakInit() {
 		CFNotificationSuspensionBehavior.deliverImmediately
 	)
 
+	SokoLayout.observeComplicationPreferences()
 	SokoHooks.install()
 	SokoHooks.scheduleHookRetries()
 	SokoHooks.startPosterBoardRefreshMonitor()

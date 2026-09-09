@@ -56,10 +56,19 @@ extension SokoLayout {
 		let hasActivePlacement =
 			!placementConstraints.isEmpty
 			&& placementConstraints.allSatisfy(\.isActive)
-		if hasActivePlacement {
-			synchronizeButtonlessWidgetPlacement(row, constraints: placementConstraints)
+		let heightChanged =
+			complicationContainerHeight().map { height in
+				guard
+					let placedHeight = placementConstraints.first(where: {
+						$0.firstAttribute == .height
+					})
+				else { return true }
+				return abs(placedHeight.constant - height) > 0.01
+			} ?? false
+		if hasActivePlacement && !heightChanged {
+			synchronizeWidgetPlacement(row, constraints: placementConstraints)
 		}
-		let shouldSchedule = force || lastRow !== row || !hasActivePlacement
+		let shouldSchedule = force || lastRow !== row || !hasActivePlacement || heightChanged
 		guard shouldSchedule else { return }
 
 		objc_setAssociatedObject(
@@ -148,6 +157,17 @@ extension SokoLayout {
 			return
 		}
 
+		let complicationHeight: CGFloat?
+		if usesIOS16ProminentDisplayCompatibility,
+			isKnownComplicationRow
+				|| (prominentDisplayViewClass.flatMap { ancestor(of: widget, matching: $0) }
+					.flatMap { prominentDisplayComplicationRow(in: $0) } === widget)
+		{
+			complicationHeight = complicationContainerHeight()
+		} else {
+			complicationHeight = nil
+		}
+
 		let quickActions = quickActionsView(for: widget)
 		let quickActionButton: UIView?
 		if let quickActions,
@@ -186,9 +206,10 @@ extension SokoLayout {
 			)
 			let preservedWidth = measuredWidth >= 100 ? measuredWidth : fallbackWidth
 			let preservedHeight =
-				measuredHeight >= 20
-				? measuredHeight
-				: widgetRowFallbackHeight
+				complicationHeight
+				?? (measuredHeight >= 20
+					? measuredHeight
+					: widgetRowFallbackHeight)
 			preservedButtonlessSize = CGSize(
 				width: preservedWidth,
 				height: preservedHeight
@@ -197,7 +218,7 @@ extension SokoLayout {
 			preservedButtonlessSize = nil
 		}
 
-		suppressVerticalConstraints(for: widget)
+		suppressVerticalConstraints(for: widget, replacingHeight: complicationHeight != nil)
 		widget.translatesAutoresizingMaskIntoConstraints = false
 
 		let verticalConstraint: NSLayoutConstraint
@@ -230,6 +251,8 @@ extension SokoLayout {
 					),
 				]
 			)
+		} else if let complicationHeight {
+			constraints.append(widget.heightAnchor.constraint(equalToConstant: complicationHeight))
 		}
 		NSLayoutConstraint.activate(constraints)
 		objc_setAssociatedObject(
@@ -240,7 +263,12 @@ extension SokoLayout {
 		)
 
 		if usesIOS16ProminentDisplayCompatibility {
-			synchronizeButtonlessWidgetPlacement(widget, constraints: constraints)
+			synchronizeWidgetPlacement(widget, constraints: constraints)
+		}
+		if complicationHeight != nil {
+			widget.setNeedsLayout()
+			container.layoutIfNeeded()
+			widget.layoutIfNeeded()
 		}
 	}
 }

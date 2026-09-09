@@ -174,7 +174,7 @@ extension SokoLayout {
 		}
 	}
 
-	static func suppressVerticalConstraints(for widget: UIView) {
+	static func suppressVerticalConstraints(for widget: UIView, replacingHeight: Bool = false) {
 		guard objc_getAssociatedObject(widget, &widgetSuppressedConstraintsKey) == nil else {
 			return
 		}
@@ -185,6 +185,10 @@ extension SokoLayout {
 			constraints.append(
 				contentsOf: view.constraints.filter {
 					affectsVerticalPosition($0, of: widget)
+						|| (replacingHeight
+							&& $0.firstItem as? UIView === widget
+							&& $0.firstAttribute == .height
+							&& $0.secondItem == nil)
 				}
 			)
 			cursor = view.superview
@@ -205,10 +209,20 @@ extension SokoLayout {
 		of widget: UIView
 	) -> Bool {
 		if constraint.firstItem as? UIView === widget {
+			if let other = constraint.secondItem as? UIView,
+				other.isDescendant(of: widget)
+			{
+				return false
+			}
 			return isVertical(constraint.firstAttribute)
 		}
 
 		if constraint.secondItem as? UIView === widget {
+			if let other = constraint.firstItem as? UIView,
+				other.isDescendant(of: widget)
+			{
+				return false
+			}
 			return isVertical(constraint.secondAttribute)
 		}
 
