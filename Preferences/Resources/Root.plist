@@ -12,6 +12,16 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>cellClass</key>
+			<string>SokoTextCellWithIcon</string>
+			<key>label</key>
+			<string>Widget Offset</string>
+			<key>sfIcon</key>
+			<string>arrow.up.and.down</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSSliderCell</string>
 			<key>id</key>
 			<string>widgetOffset</string>
@@ -52,6 +62,16 @@
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Notifications</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>cellClass</key>
+			<string>SokoTextCellWithIcon</string>
+			<key>label</key>
+			<string>Notification Offset</string>
+			<key>sfIcon</key>
+			<string>arrow.up.and.down</string>
 		</dict>
 		<dict>
 			<key>cell</key>
