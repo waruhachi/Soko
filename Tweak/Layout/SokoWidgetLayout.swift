@@ -55,12 +55,18 @@ extension SokoLayout {
 				display,
 				&prominentDisplayLastComplicationRowKey
 			) as? UIView
-		let hasActivePlacement =
-			(objc_getAssociatedObject(
+		let placementConstraints =
+			objc_getAssociatedObject(
 				row,
 				&widgetConstraintsKey
-			) as? [NSLayoutConstraint])?.contains(where: \.isActive) ?? false
-		guard force || lastRow !== row || !hasActivePlacement else { return }
+			) as? [NSLayoutConstraint] ?? []
+		let hasActivePlacement = !placementConstraints.isEmpty
+			&& placementConstraints.allSatisfy(\.isActive)
+		if hasActivePlacement {
+			synchronizeButtonlessWidgetPlacement(row, constraints: placementConstraints)
+		}
+		let shouldSchedule = force || lastRow !== row || !hasActivePlacement
+		guard shouldSchedule else { return }
 
 		objc_setAssociatedObject(
 			display,
@@ -237,24 +243,8 @@ extension SokoLayout {
 			.OBJC_ASSOCIATION_RETAIN_NONATOMIC
 		)
 
-		guard let preservedButtonlessSize else { return }
-		DispatchQueue.main.async { [weak widget] in
-			guard let widget else { return }
-			let iconList: UIView?
-			if let iconListClass = objc_getClass("SBIconListView") as? AnyClass {
-				iconList = firstDescendant(of: iconListClass, under: widget)
-			} else {
-				iconList = nil
-			}
-			SokoLog.emit(
-				"[DEBUG-soko-buttonless-size] expectedSize="
-					+ "(\(preservedButtonlessSize.width),\(preservedButtonlessSize.height)) "
-					+ "widget=\(PosterBoardDebugLog.describe(widget)) iconList="
-					+ (iconList.map {
-						PosterBoardDebugLog.describe($0)
-							+ " transform=" + PosterBoardDebugLog.transform($0.transform)
-					} ?? "nil")
-			)
+		if usesIOS16ProminentDisplayCompatibility {
+			synchronizeButtonlessWidgetPlacement(widget, constraints: constraints)
 		}
 	}
 
