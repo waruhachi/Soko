@@ -42,7 +42,6 @@ extension SokoLayout {
 			return nil
 		}
 
-		let container = lockScreenContainer(for: view)
 		var cursor: UIView? = view
 		while let ancestor = cursor {
 			if let quickActions = descendants(of: quickActionsViewClass, under: ancestor).first(
@@ -53,7 +52,6 @@ extension SokoLayout {
 			{
 				return quickActions
 			}
-			if ancestor === container { break }
 			cursor = ancestor.superview
 		}
 

@@ -195,8 +195,8 @@ extension SokoLayout {
 		let sizeBeforeRestore = widget.bounds.size
 		restoreWidgetConstraints(widget)
 
-		let preservedButtonlessSize: CGSize?
-		if quickActionButton == nil {
+		let preservedWidgetSize: CGSize?
+		if quickActionButton == nil || complicationHeight != nil {
 			container.layoutIfNeeded()
 			let measuredWidth = max(sizeBeforeRestore.width, widget.bounds.width)
 			let measuredHeight = max(sizeBeforeRestore.height, widget.bounds.height)
@@ -210,12 +210,12 @@ extension SokoLayout {
 				?? (measuredHeight >= 20
 					? measuredHeight
 					: widgetRowFallbackHeight)
-			preservedButtonlessSize = CGSize(
+			preservedWidgetSize = CGSize(
 				width: preservedWidth,
 				height: preservedHeight
 			)
 		} else {
-			preservedButtonlessSize = nil
+			preservedWidgetSize = nil
 		}
 
 		suppressVerticalConstraints(for: widget, replacingHeight: complicationHeight != nil)
@@ -240,19 +240,17 @@ extension SokoLayout {
 			widget.centerXAnchor.constraint(equalTo: container.centerXAnchor),
 			verticalConstraint,
 		]
-		if let preservedButtonlessSize {
+		if let preservedWidgetSize {
 			constraints.append(
 				contentsOf: [
 					widget.widthAnchor.constraint(
-						equalToConstant: preservedButtonlessSize.width
+						equalToConstant: preservedWidgetSize.width
 					),
 					widget.heightAnchor.constraint(
-						equalToConstant: preservedButtonlessSize.height
+						equalToConstant: preservedWidgetSize.height
 					),
 				]
 			)
-		} else if let complicationHeight {
-			constraints.append(widget.heightAnchor.constraint(equalToConstant: complicationHeight))
 		}
 		NSLayoutConstraint.activate(constraints)
 		objc_setAssociatedObject(
@@ -270,5 +268,6 @@ extension SokoLayout {
 			container.layoutIfNeeded()
 			widget.layoutIfNeeded()
 		}
+		refreshNotificationLists(in: widget.window)
 	}
 }

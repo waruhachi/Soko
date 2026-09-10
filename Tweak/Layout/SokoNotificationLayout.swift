@@ -196,7 +196,13 @@ extension SokoLayout {
 		SokoHooks.installNotificationCountIndicatorHooks()
 		MRUserSettingsExpandedLockScreenPlatterHook.hook()
 
-		guard let window = list.window else { return }
+		guard let window = list.window, let listSuperview = list.superview else { return }
+		if let listClass = notificationListClass,
+			ancestor(of: listSuperview, matching: listClass) != nil
+		{
+			restoreNotificationListSystemGeometry(list)
+			return
+		}
 		if isExpandedAlbumArtworkActive(for: list) {
 			restoreNotificationListSystemGeometry(list)
 			scheduleMediaControlsGeometrySynchronization(
@@ -205,16 +211,15 @@ extension SokoLayout {
 			)
 			return
 		}
-		guard let listSuperview = list.superview else { return }
-
 		let notificationOffset = CGFloat(TweakPreferences.shared.preferences.notificationOffset)
+		let widgetTop = notificationWidgetTop(near: list, in: listSuperview)
 		let targetBottom: CGFloat
 		if let quickActions = quickActionsView(for: list),
 			let buttonClass = quickActionsButtonClass,
 			let button = bottomVisibleDescendant(of: buttonClass, under: quickActions)
 		{
 			let buttonFrame = listSuperview.convert(button.bounds, from: button)
-			targetBottom = buttonFrame.minY + notificationOffset
+			targetBottom = min(buttonFrame.minY, widgetTop ?? buttonFrame.minY) + notificationOffset
 		} else {
 			guard window.safeAreaInsets.bottom <= 0.5 else {
 				restoreNotificationListSystemGeometry(list)
@@ -224,10 +229,12 @@ extension SokoLayout {
 			let bottomInset = max(widgetBottomEdgePadding, container.safeAreaInsets.bottom)
 			let bottom = CGPoint(x: container.bounds.midX, y: container.bounds.maxY - bottomInset)
 			let defaultOffset = CGFloat(Preferences().notificationOffset)
+			let containerBottom = listSuperview.convert(bottom, from: container).y
 			targetBottom =
-				listSuperview.convert(bottom, from: container).y
+				min(containerBottom, widgetTop ?? containerBottom)
 				+ notificationOffset - defaultOffset
 		}
+		guard targetBottom.isFinite else { return }
 		let currentFrame = list.frame
 		let systemFrame: CGRect
 		if let appliedFrame = associatedRect(
@@ -250,8 +257,8 @@ extension SokoLayout {
 		}
 
 		var listFrame = systemFrame
-		let height = targetBottom - listFrame.minY
-		guard height >= notificationMinHeight else { return }
+		let height = max(notificationMinHeight, targetBottom - listFrame.minY)
+		listFrame.origin.y = targetBottom - height
 		listFrame.size.height = height
 		setAssociatedRect(
 			listFrame,
@@ -268,6 +275,27 @@ extension SokoLayout {
 			near: list,
 			expanded: false
 		)
+	}
+
+	static func notificationWidgetTop(near list: UIView, in referenceView: UIView) -> CGFloat? {
+		guard usesIOS16ProminentDisplayCompatibility,
+			let displayClass = prominentDisplayViewClass,
+			let window = list.window
+		else { return nil }
+
+		return descendants(of: displayClass, under: window).compactMap { display -> CGFloat? in
+			guard !prominentDisplayUsesEditingLayout(display),
+				let widget = prominentDisplayComplicationRow(in: display),
+				widget.window === list.window,
+				isVisibleInHierarchy(widget),
+				let constraints = objc_getAssociatedObject(widget, &widgetConstraintsKey)
+					as? [NSLayoutConstraint],
+				!constraints.isEmpty, constraints.allSatisfy(\.isActive)
+			else { return nil }
+			let frame = referenceView.convert(widget.bounds, from: widget)
+			guard !frame.isEmpty, frame.minY.isFinite else { return nil }
+			return frame.minY
+		}.min()
 	}
 
 	static func restoreNotificationListSystemGeometry(_ list: UIView) {

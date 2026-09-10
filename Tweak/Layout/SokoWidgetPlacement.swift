@@ -55,5 +55,6 @@ extension SokoLayout {
 		widget.layer.position.y += delta.y
 		CATransaction.commit()
 		widget.setNeedsLayout()
+		refreshNotificationLists(in: widget.window)
 	}
 }
