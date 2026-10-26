@@ -21,9 +21,13 @@ static BOOL SokoButtonCenterYInQuickActionsView(CSQuickActionsView *quickActions
 	return NO;
 }
 
-BOOL SokoQuickActionButtonCenterY(CSCoverSheetView *coverSheetView, CGFloat *centerY) {
+BOOL SokoQuickActionButtonsSupported(void) {
 	Class quickActionsClass = NSClassFromString(@"CSQuickActionsViewController");
-	if (![quickActionsClass respondsToSelector:@selector(deviceSupportsButtons)] || ![quickActionsClass deviceSupportsButtons]) return NO;
+	return [quickActionsClass respondsToSelector:@selector(deviceSupportsButtons)] && [quickActionsClass deviceSupportsButtons];
+}
+
+BOOL SokoQuickActionButtonCenterY(CSCoverSheetView *coverSheetView, CGFloat *centerY) {
+	if (!SokoQuickActionButtonsSupported()) return NO;
 
 	CSQuickActionsView *quickActions = [coverSheetView respondsToSelector:@selector(quickActionsView)] ? coverSheetView.quickActionsView : nil;
 	CGFloat buttonCenterY;

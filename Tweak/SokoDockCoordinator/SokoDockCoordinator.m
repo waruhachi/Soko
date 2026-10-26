@@ -3,7 +3,7 @@
 NSString *const SokoProminentDisplayVibrancyDidChangeNotification = @"SokoProminentDisplayVibrancyDidChangeNotification";
 NSString *const SokoProminentDisplayContentAlphaDidChangeNotification = @"SokoProminentDisplayContentAlphaDidChangeNotification";
 
-static const CGFloat kSokoDockBottomInsetWithoutButtons = 24.0;
+static const CGFloat kSokoDockBottomInsetWithoutButtons = 71.0;
 
 static const void *kSokoDockCoordinatorKey = &kSokoDockCoordinatorKey;
 static __weak SokoDockCoordinator *gActiveCoordinator;
@@ -16,6 +16,7 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 @property (nonatomic) BOOL enabled;
 @property (nonatomic) BOOL attached;
 @property (nonatomic) CGFloat dockTopY;
+@property (nonatomic) CGFloat dockBottomY;
 @end
 
 @implementation SokoDockCoordinator
@@ -75,6 +76,7 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 		_coverSheetViewController = controller;
 		_notificationList = [[SokoNotificationList alloc] initWithCoverSheetViewController:controller dock:self];
 		_dockTopY = NAN;
+		_dockBottomY = NAN;
 
 		NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 		[center addObserver:self selector:@selector(prominentDisplayVibrancyDidChange:) name:SokoProminentDisplayVibrancyDidChangeNotification object:nil];
@@ -222,6 +224,7 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 
 	self.attached = NO;
 	self.dockTopY = NAN;
+	self.dockBottomY = NAN;
 	if (gActiveCoordinator == self) gActiveCoordinator = nil;
 
 	if (complications) coverSheet.dateViewController.complicationContainerViewController = complications;
@@ -260,11 +263,13 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 	if (CGRectIsNull(row) || CGRectGetHeight(row) <= 0.0 || CGRectGetWidth(row) <= 0.0) {
 		host.hidden = YES;
 		self.dockTopY = NAN;
+		self.dockBottomY = NAN;
 		return;
 	}
 
 	row.origin.y = [self dockBottomYInCoverSheetView:coverSheetView] - CGRectGetHeight(row);
 	self.dockTopY = CGRectGetMinY(row);
+	self.dockBottomY = CGRectGetMaxY(row);
 
 	host.hidden = NO;
 	host.transform = CGAffineTransformIdentity;

@@ -4,6 +4,7 @@
 @protocol SokoNotificationListDock <NSObject>
 @property (nonatomic, readonly) BOOL dockVisible;
 @property (nonatomic, readonly) CGFloat dockTopY;
+@property (nonatomic, readonly) CGFloat dockBottomY;
 @property (nonatomic, readonly) UIView *dockContainerView;
 @property (nonatomic, readonly) double complicationContainerHeight;
 @end

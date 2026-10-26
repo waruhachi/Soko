@@ -113,10 +113,18 @@ static const CGFloat kSokoNotificationToDockSpacing = 10.0;
 	return YES;
 }
 
+- (BOOL)getFooterTargetY:(CGFloat *)targetY inCoverSheetView:(CSCoverSheetView *)coverSheetView {
+	if (SokoQuickActionButtonCenterY(coverSheetView, targetY)) return YES;
+	if (SokoQuickActionButtonsSupported() || !self.dock.dockVisible || isnan(self.dock.dockBottomY)) return NO;
+
+	*targetY = (self.dock.dockBottomY + CGRectGetHeight(coverSheetView.bounds)) / 2.0;
+	return YES;
+}
+
 - (CGFloat)footerCenterDistanceFromBottomOfListView:(UIView *)listView {
 	CSCoverSheetView *coverSheetView = (CSCoverSheetView *)self.coverSheetViewController.viewIfLoaded;
-	CGFloat buttonCenterY;
-	if (!coverSheetView || !SokoQuickActionButtonCenterY(coverSheetView, &buttonCenterY)) return self.footerCenterDistanceFromListBottom;
+	CGFloat footerY;
+	if (!coverSheetView || ![self getFooterTargetY:&footerY inCoverSheetView:coverSheetView]) return self.footerCenterDistanceFromListBottom;
 
 	CGFloat offset = 0.0;
 	UIView *view = listView;
@@ -127,9 +135,9 @@ static const CGFloat kSokoNotificationToDockSpacing = 10.0;
 
 	CGFloat targetY;
 	if (view == coverSheetView) {
-		targetY = buttonCenterY - offset;
+		targetY = footerY - offset;
 	} else {
-		targetY = [listView convertPoint:CGPointMake(0.0, buttonCenterY) fromView:coverSheetView].y;
+		targetY = [listView convertPoint:CGPointMake(0.0, footerY) fromView:coverSheetView].y;
 	}
 
 	self.footerCenterDistanceFromListBottom = CGRectGetMaxY(listView.bounds) - targetY;
