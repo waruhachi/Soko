@@ -137,8 +137,15 @@
 @end
 
 @interface PRSPosterConfiguration : NSObject
+@property (nonatomic, readonly) id _path;
 - (id)pr_loadComplicationLayoutWithError:(NSError **)error;
 - (NSDictionary *)loadUserInfoWithError:(NSError **)error;
+@end
+
+@interface PRMutablePosterConfiguration : NSObject
+- (instancetype)_initWithPath:(id)path;
+- (id)loadComplicationLayoutWithError:(NSError **)error;
+- (BOOL)storeComplicationLayout:(id)layout error:(NSError **)error;
 @end
 
 @interface PRSWallpaperObserverState : NSObject

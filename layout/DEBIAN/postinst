@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ] && [ -z "$2" ]; then
+	for root in "${DPKG_ROOT:-}" /var/jb; do
+		if [ -e "$root/Library/MobileSubstrate/DynamicLibraries/Soko.dylib" ]; then
+			marker="$root/var/mobile/Library/Preferences/moe.waru.soko.default-layout"
+			touch "$marker"
+			chown mobile:mobile "$marker" 2>/dev/null || true
+			exit 0
+		fi
+	done
+fi

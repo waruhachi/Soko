@@ -107,6 +107,7 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 
 	PRSWallpaperObserverState *state = SokoIvarObject(self, "_wallpaperState");
 	PRSPosterConfiguration *configuration = [state respondsToSelector:@selector(activeLock)] ? state.activeLock : nil;
+	[SokoPosterModel applyPendingDefaultLayoutToConfiguration:configuration];
 
 	BOOL usesBottomLayout;
 	if (SokoLiquidAssClockEnabled()) {
