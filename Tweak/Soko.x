@@ -108,12 +108,17 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 	PRSWallpaperObserverState *state = SokoIvarObject(self, "_wallpaperState");
 	PRSPosterConfiguration *configuration = [state respondsToSelector:@selector(activeLock)] ? state.activeLock : nil;
 
-	id layout = nil;
-	if ([configuration respondsToSelector:@selector(pr_loadComplicationLayoutWithError:)]) {
-		layout = [configuration pr_loadComplicationLayoutWithError:nil];
-	}
+	BOOL usesBottomLayout;
+	if (SokoLiquidAssClockEnabled()) {
+		usesBottomLayout = configuration && SokoLiquidAssUserInfoUsesBottomLayout(SokoLiquidAssUserInfoForConfiguration(configuration));
+	} else {
+		id layout = nil;
+		if ([configuration respondsToSelector:@selector(pr_loadComplicationLayoutWithError:)]) {
+			layout = [configuration pr_loadComplicationLayoutWithError:nil];
+		}
 
-	BOOL usesBottomLayout = [SokoPosterModel complicationLayoutUsesBottomLayout:layout];
+		usesBottomLayout = [SokoPosterModel complicationLayoutUsesBottomLayout:layout];
+	}
 	dispatch_async(dispatch_get_main_queue(), ^{
 		SokoSetActivePosterUsesBottomLayout(usesBottomLayout);
 	});
@@ -470,6 +475,30 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 
 %end
 
+%group SokoLiquidAssPoster
+
+%hook CSProminentLayoutController
+
+- (CGRect)_frameForElement:(unsigned long long)element withBoundingRect:(CGRect)rect variant:(unsigned long long)variant {
+	CGRect frame = %orig;
+
+	return [SokoPosterLayout frameByAdjustingFrame:frame forElement:element boundingRect:rect variant:variant layoutController:self];
+}
+
+%end
+
+%hook PRComplicationContainerViewController
+
+- (void)viewDidLoad {
+	%orig;
+
+	[SokoPosterLayout registerComplicationContainerViewController:self];
+}
+
+%end
+
+%end
+
 %group SokoPhotosEditor
 
 %hook PUWallpaperPosterEditorController
@@ -525,8 +554,20 @@ static void SokoInitDock(void) {
 	}
 }
 
+static void SokoInitLiquidAssPoster(void) {
+	%init(SokoLiquidAssPoster);
+
+	SokoDockGeometryObserve(^{
+		[SokoPosterLayout relayoutAnimated:YES];
+	});
+}
+
 static void SokoInitPoster(void) {
 	if (![SokoPosterLayout isSupported]) return;
+	if (SokoLiquidAssClockEnabled()) {
+		SokoInitLiquidAssPoster();
+		return;
+	}
 
 	%init(SokoPoster);
 
@@ -552,7 +593,6 @@ static void SokoInitPoster(void) {
 
 %ctor {
 	if ([SokoPosterModel isSupported]) %init(SokoPosterModel);
-	if (SokoLiquidAssClockEnabled()) return;
 
 	if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
 		SokoInitDock();

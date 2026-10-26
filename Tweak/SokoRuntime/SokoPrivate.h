@@ -138,6 +138,7 @@
 
 @interface PRSPosterConfiguration : NSObject
 - (id)pr_loadComplicationLayoutWithError:(NSError **)error;
+- (NSDictionary *)loadUserInfoWithError:(NSError **)error;
 @end
 
 @interface PRSWallpaperObserverState : NSObject

@@ -1,8 +1,10 @@
-#import "SokoEditorChrome.h"
+#import "SokoPosterLayout.h"
 
 static const CGFloat kSokoBottomRowEditingOffset = 28.0;
 
 static const void *kSokoEditorBottomLayoutKey = &kSokoEditorBottomLayoutKey;
+static const void *kSokoLiquidAssConfigurationKey = &kSokoLiquidAssConfigurationKey;
+static const void *kSokoLiquidAssUserInfoKey = &kSokoLiquidAssUserInfoKey;
 
 static NSHashTable<UIViewController *> *gComplicationContainerViewControllers;
 static NSHashTable<PREditingSceneViewController *> *gEditingSceneViewControllers;
@@ -33,6 +35,19 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 		[layoutClass respondsToSelector:@selector(frameForElements:variant:)];
 }
 
++ (BOOL)liquidAssPosterCellUsesBottomLayout:(UIView *)cell {
+	id pair = SokoIvarObject(cell, "posterPair");
+	id configuration = SokoIvarObject(pair, "configuration");
+	if (!configuration) return SokoDockActiveUsesBottomLayout();
+
+	if (objc_getAssociatedObject(cell, kSokoLiquidAssConfigurationKey) != configuration) {
+		objc_setAssociatedObject(cell, kSokoLiquidAssConfigurationKey, configuration, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(cell, kSokoLiquidAssUserInfoKey, SokoLiquidAssUserInfoForConfiguration(configuration) ?: @{}, OBJC_ASSOCIATION_COPY_NONATOMIC);
+	}
+
+	return SokoLiquidAssUserInfoUsesBottomLayout(objc_getAssociatedObject(cell, kSokoLiquidAssUserInfoKey));
+}
+
 + (BOOL)layoutControllerUsesBottomLayout:(CSProminentLayoutController *)layoutController {
 	static Class cellClass;
 	static Ivar layoutIvar;
@@ -48,6 +63,7 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 
 	for (; cellClass && view; view = view.superview) {
 		if (![view isKindOfClass:cellClass]) continue;
+		if (SokoLiquidAssClockEnabled()) return [self liquidAssPosterCellUsesBottomLayout:view];
 
 		return layoutIvar && [SokoPosterModel complicationLayoutUsesBottomLayout:object_getIvar(view, layoutIvar)];
 	}
@@ -59,6 +75,8 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 	if (element != kSokoComplicationRowElement || variant == kSokoReticleVariant || gComputingStockLayout) return frame;
 
 	BOOL editing = variant == kSokoEditingVariant;
+	if (editing && SokoLiquidAssClockEnabled()) return frame;
+
 	BOOL bottom = editing ? [self usesBottomEditingRow] : [self layoutControllerUsesBottomLayout:layoutController];
 	if (!bottom) return frame;
 

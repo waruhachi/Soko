@@ -1,6 +1,8 @@
+#import "../SokoCompatibility/SokoCompatibility.h"
 #import "../SokoDockGeometry/SokoDockGeometry.h"
 #import "../SokoPosterModel/SokoPosterModel.h"
 #import "../SokoRuntime/SokoRuntime.h"
+#import "SokoEditorChrome.h"
 
 @interface SokoPosterLayout : NSObject
 + (BOOL)isSupported;
