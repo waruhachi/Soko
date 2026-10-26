@@ -1,9 +1,9 @@
 Package: moe.waru.soko
 Name: Soko
-Version: 1.0.0-rc.3
+Version: 1.0.0
 Architecture: iphoneos-arm
 Description: iOS 26 style Lock Screen widgets
 Maintainer: waruhachi
 Author: waruhachi
 Section: Tweaks
-Depends: mobilesubstrate, preferenceloader
+Depends: firmware (>= 16.0), firmware (<< 19.0), mobilesubstrate (>= 0.9.5000)

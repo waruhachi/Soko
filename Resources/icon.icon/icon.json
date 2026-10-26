@@ -1,0 +1,145 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : "automatic"
+    },
+    {
+      "appearance" : "dark",
+      "value" : "automatic"
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "Flashlight-Glyph.png",
+          "name" : "Flashlight-Glyph",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "glass" : true,
+          "image-name" : "Flashlight-Disc.png",
+          "name" : "Flashlight-Disc",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              1,
+              0
+            ]
+          }
+        }
+      ],
+      "name" : "Flashlight",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.3
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.6
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "Camera-Glyph.png",
+          "name" : "Camera-Glyph",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -1,
+              0
+            ]
+          }
+        },
+        {
+          "glass" : true,
+          "image-name" : "Camera-Disc.png",
+          "name" : "Camera-Disc",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -1,
+              0
+            ]
+          }
+        }
+      ],
+      "name" : "Camera",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.3
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.6
+      }
+    },
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "Widget-Content.png",
+          "name" : "Widget-Content"
+        },
+        {
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "Widget-Tiles.png",
+          "name" : "Widget-Tiles"
+        }
+      ],
+      "name" : "Widgets",
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : false,
+        "strength" : 0.5
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.3
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "Frame.png",
+          "name" : "Frame"
+        }
+      ],
+      "name" : "Phone",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "iOS"
+    ]
+  }
+}

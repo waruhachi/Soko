@@ -2,13 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>Filter</key>
-	<dict>
-		<key>Bundles</key>
-		<array>
-			<string>com.apple.springboard</string>
-			<string>com.apple.PosterBoard</string>
-		</array>
-	</dict>
+    <key>Filter</key>
+    <dict>
+        <key>Bundles</key>
+        <array>
+            <string>com.apple.springboard</string>
+            <string>com.apple.PosterBoard</string>
+            <string>com.apple.PosterKit</string>
+            <string>com.apple.MercuryPoster</string>
+        </array>
+    </dict>
 </dict>
 </plist>
