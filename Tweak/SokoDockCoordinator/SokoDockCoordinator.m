@@ -230,7 +230,8 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 			[scene updateSettings:settings withTransitionContext:nil];
 			if (!allowed) [self.overriddenDepthScenes removeObject:scene];
 			if (!current) [self.nativeDepthVetoByScene removeObjectForKey:scene];
-		} @finally {
+		}
+		@finally {
 			self.updatingWallpaperDepthSettings = NO;
 		}
 	}

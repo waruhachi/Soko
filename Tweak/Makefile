@@ -1,6 +1,6 @@
 TWEAK_NAME = Soko
 
-$(TWEAK_NAME)_FILES = $(TWEAK_NAME).x $(wildcard SokoCompatibility/*.m) $(wildcard SokoDockCoordinator/*.m) $(wildcard SokoPosterLayout/*.m) $(wildcard SokoPosterModel/*.m) $(wildcard SokoDockGeometry/*.m) $(wildcard SokoRuntime/*.mm)
+$(TWEAK_NAME)_FILES = $(TWEAK_NAME).x $(wildcard SokoHooks/*.x) $(wildcard SokoHooks/*.m) $(wildcard SokoCompatibility/*.m) $(wildcard SokoDockCoordinator/*.m) $(wildcard SokoPosterLayout/*.m) $(wildcard SokoPosterModel/*.m) $(wildcard SokoDockGeometry/*.m) $(wildcard SokoRuntime/*.mm)
 $(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation QuartzCore
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc
 

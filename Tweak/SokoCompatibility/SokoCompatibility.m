@@ -1,5 +1,5 @@
-#import "SokoCompatibility.h"
 #import "../SokoRuntime/SokoRuntime.h"
+#import "SokoCompatibility.h"
 
 @protocol SokoLiquidAssEditorEnvironment <NSObject>
 @property (nonatomic, readonly) id sourceContents;
@@ -26,8 +26,7 @@ void SokoLiquidAssPrepareEditorDefaults(UIViewController *controller) {
 
 NSDictionary *SokoLiquidAssEditorUserInfo(id configuration, NSDictionary *info, NSError *error) {
 	if (![objc_getAssociatedObject(configuration, kSokoLiquidAssEditorSourceKey) boolValue]) return info;
-	if (error && !([error.domain isEqualToString:NSCocoaErrorDomain] &&
-		(error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError))) return info;
+	if (error && !([error.domain isEqualToString:NSCocoaErrorDomain] && (error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError))) return info;
 	if (info && ![info isKindOfClass:[NSDictionary class]]) return info;
 	if (info[kSokoLiquidAssResizeProgressKey]) return info;
 

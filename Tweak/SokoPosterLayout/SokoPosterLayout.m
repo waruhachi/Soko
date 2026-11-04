@@ -1,5 +1,6 @@
-#import "SokoPosterLayout.h"
 #import <QuartzCore/QuartzCore.h>
+
+#import "SokoPosterLayout.h"
 
 @interface SokoPosterDepthMask : NSObject
 @property (nonatomic, strong) NSMapTable<UIView *, CAShapeLayer *> *masks;
@@ -44,7 +45,7 @@ static NSHashTable<UIViewController *> *gComplicationContainerViewControllers;
 static NSHashTable<PREditingSceneViewController *> *gEditingSceneViewControllers;
 
 static __thread BOOL gComputingStockLayout;
-static BOOL gIgnoringGraphicComplications;
+static __thread BOOL gIgnoringGraphicComplications;
 
 static __weak PREditingSceneViewController *gDodgingEditingSceneViewController;
 static BOOL gCoveredByHostModalPresentation;
@@ -80,7 +81,10 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 		Class portalClass = NSClassFromString(@"_UIPortalView");
 		BOOL afterDisplay = NO;
 		for (UIView *sibling in display.superview.subviews) {
-			if (sibling == display) { afterDisplay = YES; continue; }
+			if (sibling == display) {
+				afterDisplay = YES;
+				continue;
+			}
 			if (!afterDisplay) continue;
 			if ([sibling isKindOfClass:displayClass]) break;
 			if (!([sibling isKindOfClass:[UIImageView class]] || (portalClass && [sibling isKindOfClass:portalClass])) ||
@@ -91,7 +95,10 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 			}
 		}
 	}
-	if (!foregrounds.count) { [self clearDepthMaskForPosterCell:cell]; return; }
+	if (!foregrounds.count) {
+		[self clearDepthMaskForPosterCell:cell];
+		return;
+	}
 	SokoPosterDepthMask *state = objc_getAssociatedObject(cell, kSokoPosterDepthMaskKey);
 	if (!state) {
 		state = [SokoPosterDepthMask new];
@@ -109,7 +116,8 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 		CAShapeLayer *mask = [state.masks objectForKey:foreground];
 		if (foreground.layer.mask && foreground.layer.mask != mask) continue;
 		if (!mask) {
-			mask = [CAShapeLayer layer];mask.fillRule = kCAFillRuleEvenOdd;
+			mask = [CAShapeLayer layer];
+			mask.fillRule = kCAFillRuleEvenOdd;
 			[state.masks setObject:mask forKey:foreground];
 		}
 		CGRect cutout = [row convertRect:row.bounds toView:foreground];
