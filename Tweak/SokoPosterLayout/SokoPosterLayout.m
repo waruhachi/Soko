@@ -1,4 +1,24 @@
 #import "SokoPosterLayout.h"
+#import <QuartzCore/QuartzCore.h>
+
+@interface SokoPosterDepthMask : NSObject
+@property (nonatomic, strong) NSMapTable<UIView *, CAShapeLayer *> *masks;
+@end
+
+@implementation SokoPosterDepthMask
+@end
+
+static const void *kSokoPosterDepthMaskKey = &kSokoPosterDepthMaskKey;
+
+static CSProminentDisplayView *SokoVisibleProminentDisplay(UIView *view) {
+	if (view.hidden) return nil;
+	if ([view isKindOfClass:NSClassFromString(@"CSProminentDisplayView")]) return view.alpha > 0.01 ? (CSProminentDisplayView *)view : nil;
+	for (UIView *child in view.subviews) {
+		CSProminentDisplayView *display = SokoVisibleProminentDisplay(child);
+		if (display) return display;
+	}
+	return nil;
+}
 
 static const CGFloat kSokoBottomRowEditingOffset = 28.0;
 
@@ -23,6 +43,70 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 }
 
 @implementation SokoPosterLayout
+
++ (void)clearDepthMaskForPosterCell:(UIView *)cell {
+	SokoPosterDepthMask *state = objc_getAssociatedObject(cell, kSokoPosterDepthMaskKey);
+	for (UIView *foreground in state.masks.keyEnumerator.allObjects) {
+		if (foreground.layer.mask == [state.masks objectForKey:foreground]) foreground.layer.mask = nil;
+	}
+	objc_setAssociatedObject(cell, kSokoPosterDepthMaskKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
++ (void)updateDepthMaskForPosterCell:(UIView *)cell {
+	id layout = SokoPosterCellComplicationLayout(cell);
+	NSArray *widgets = [layout respondsToSelector:@selector(complications)] ? [layout complications] : nil;
+	CSProminentDisplayView *display = SokoVisibleProminentDisplay(cell);
+	UIView *row = [display respondsToSelector:@selector(complicationRowView)] ? display.complicationRowView : nil;
+	NSMutableArray<UIView *> *foregrounds = [NSMutableArray array];
+	if ([widgets isKindOfClass:[NSArray class]] && widgets.count && row && !row.hidden &&
+		!CGRectIsEmpty(row.bounds) && SokoIsPortrait(display.bounds)) {
+		// Both cached snapshots and live portals occupy this foreground interval.
+		// Background representations precede the clock and already contain the widgets.
+		Class displayClass = NSClassFromString(@"CSProminentDisplayView");
+		Class portalClass = NSClassFromString(@"_UIPortalView");
+		BOOL afterDisplay = NO;
+		for (UIView *sibling in display.superview.subviews) {
+			if (sibling == display) { afterDisplay = YES; continue; }
+			if (!afterDisplay) continue;
+			if ([sibling isKindOfClass:displayClass]) break;
+			if (!([sibling isKindOfClass:[UIImageView class]] || (portalClass && [sibling isKindOfClass:portalClass])) ||
+				!CGRectEqualToRect(sibling.bounds, display.bounds)) continue;
+			CGRect cutout = [row convertRect:row.bounds toView:sibling];
+			if (CGRectGetMinY(cutout) >= CGRectGetMidY(sibling.bounds) && CGRectIntersectsRect(cutout, sibling.bounds)) {
+				[foregrounds addObject:sibling];
+			}
+		}
+	}
+	if (!foregrounds.count) { [self clearDepthMaskForPosterCell:cell]; return; }
+	SokoPosterDepthMask *state = objc_getAssociatedObject(cell, kSokoPosterDepthMaskKey);
+	if (!state) {
+		state = [SokoPosterDepthMask new];
+		state.masks = [NSMapTable weakToStrongObjectsMapTable];
+		objc_setAssociatedObject(cell, kSokoPosterDepthMaskKey, state, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	}
+	for (UIView *old in state.masks.keyEnumerator.allObjects) {
+		if ([foregrounds containsObject:old]) continue;
+		if (old.layer.mask == [state.masks objectForKey:old]) old.layer.mask = nil;
+		[state.masks removeObjectForKey:old];
+	}
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	for (UIView *foreground in foregrounds) {
+		CAShapeLayer *mask = [state.masks objectForKey:foreground];
+		if (foreground.layer.mask && foreground.layer.mask != mask) continue;
+		if (!mask) {
+			mask = [CAShapeLayer layer];mask.fillRule = kCAFillRuleEvenOdd;
+			[state.masks setObject:mask forKey:foreground];
+		}
+		CGRect cutout = [row convertRect:row.bounds toView:foreground];
+		UIBezierPath *path = [UIBezierPath bezierPathWithRect:foreground.bounds];
+		[path appendPath:[UIBezierPath bezierPathWithRect:cutout]];
+		if (!CGRectEqualToRect(mask.frame, foreground.bounds)) mask.frame = foreground.bounds;
+		if (!mask.path || !CGPathEqualToPath(mask.path, path.CGPath)) mask.path = path.CGPath;
+		if (foreground.layer.mask != mask) foreground.layer.mask = mask;
+	}
+	[CATransaction commit];
+}
 
 + (BOOL)isSupported {
 	Class containerClass = NSClassFromString(@"PRComplicationContainerViewController");
@@ -50,11 +134,9 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 
 + (BOOL)layoutControllerUsesBottomLayout:(CSProminentLayoutController *)layoutController {
 	static Class cellClass;
-	static Ivar layoutIvar;
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
 		cellClass = NSClassFromString(@"_TtC11PosterBoard34LockScreenPosterCollectionViewCell");
-		layoutIvar = cellClass ? class_getInstanceVariable(cellClass, "complicationLayout") : NULL;
 	});
 
 	id environment = [layoutController respondsToSelector:@selector(traitEnvironment)] ? layoutController.traitEnvironment : nil;
@@ -65,7 +147,7 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 		if (![view isKindOfClass:cellClass]) continue;
 		if (SokoLiquidAssClockEnabled()) return [self liquidAssPosterCellUsesBottomLayout:view];
 
-		return layoutIvar && [SokoPosterModel complicationLayoutUsesBottomLayout:object_getIvar(view, layoutIvar)];
+		return [SokoPosterModel complicationLayoutUsesBottomLayout:SokoPosterCellComplicationLayout(view)];
 	}
 
 	return SokoDockActiveUsesBottomLayout();

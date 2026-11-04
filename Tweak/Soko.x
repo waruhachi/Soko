@@ -1,7 +1,9 @@
 #import "Soko.h"
 
 static BOOL gActivePosterUsesBottomLayout;
+static __thread const void *gWallpaperDepthQuerySettings;
 static __weak CSCoverSheetViewController *gCoverSheetViewController;
+static id gPosterPreviewLaunchObserver;
 
 static SokoDockCoordinator *SokoCoordinator(void) {
 	CSCoverSheetViewController *coverSheet = gCoverSheetViewController;
@@ -331,6 +333,76 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 
 %end
 
+%group SokoPosterPreview
+
+%hook SokoLockScreenPosterCollectionViewCell
+
+- (void)layoutSubviews {
+	%orig;
+	[SokoPosterLayout updateDepthMaskForPosterCell:self];
+}
+
+- (void)prepareForReuse {
+	%orig;
+	[SokoPosterLayout clearDepthMaskForPosterCell:self];
+}
+
+%end
+
+%end
+
+%group SokoSavedDepthEffect
+
+%hook FBSSceneSettings
+
+- (BOOL)pr_isDepthEffectDisallowed {
+	return gWallpaperDepthQuerySettings == (__bridge const void *)self ? NO : %orig;
+}
+
+%end
+
+%hook PBUIPosterLockViewController
+
+- (id)portalSourceForReplicaView:(UIView *)replica {
+	NSString *reason = SokoIvarObject(replica, "_reason");
+	if (![SokoCoordinator() allowsWallpaperDepthEffect] ||
+		![reason isKindOfClass:[NSString class]] || ![reason isEqualToString:@"CSCoverSheetViewController"]) return %orig;
+
+	FBScene *scene = SokoIvarObject(self, "_scene");
+	FBSSceneSettings *settings = [scene respondsToSelector:@selector(settings)] ? scene.settings : nil;
+	if (!settings) return %orig;
+	[SokoCoordinator() registerWallpaperDepthScene:scene forReplica:replica];
+
+	// Resolve the native source while the scene correction is being published.
+	// The renderer's separate depth preference remains intact.
+	const void *previous = gWallpaperDepthQuerySettings;
+	gWallpaperDepthQuerySettings = (__bridge const void *)settings;
+	@try {
+		return %orig;
+	} @finally {
+		gWallpaperDepthQuerySettings = previous;
+	}
+}
+
+%end
+
+%end
+
+%group SokoSavedDepthSettings
+
+%hook PBUIPosterViewController
+
+- (void)scene:(FBScene *)scene willUpdateSettings:(FBSMutableSceneSettings *)settings withTransitionContext:(id)context {
+	%orig;
+	if (scene == SokoIvarObject(self, "_scene")) {
+		[SokoCoordinator() prepareWallpaperDepthScene:scene settings:settings];
+	}
+}
+
+%end
+
+%end
+
 %group SokoPosterWidgetConfiguration
 
 %hook PREditingSceneViewController
@@ -476,6 +548,30 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 
 %end
 
+%group SokoLiquidAssEditorDefaults
+
+%hook LGClockEditorState
+
+- (void)setController:(UIViewController *)controller {
+	%orig;
+	SokoLiquidAssPrepareEditorDefaults(controller);
+}
+
+%end
+
+%hook PRPosterConfiguration
+
+- (NSDictionary *)loadUserInfoWithError:(NSError **)error {
+	NSError *loadError = nil;
+	NSDictionary *info = %orig(&loadError);
+	if (error) *error = loadError;
+	return SokoLiquidAssEditorUserInfo(self, info, loadError);
+}
+
+%end
+
+%end
+
 %group SokoLiquidAssPoster
 
 %hook CSProminentLayoutController
@@ -534,6 +630,13 @@ static void SokoInitDock(void) {
 	if (![SokoDockCoordinator isSupported]) return;
 
 	%init(SokoDock);
+	if ([objc_getClass("FBSSceneSettings") instancesRespondToSelector:@selector(pr_isDepthEffectDisallowed)] &&
+		[objc_getClass("PBUIPosterLockViewController") instancesRespondToSelector:@selector(portalSourceForReplicaView:)]) {
+		%init(SokoSavedDepthEffect);
+		if ([objc_getClass("PBUIPosterViewController") instancesRespondToSelector:@selector(scene:willUpdateSettings:withTransitionContext:)]) {
+			%init(SokoSavedDepthSettings);
+		}
+	}
 
 	if ([objc_getClass("NCNotificationListView") instancesRespondToSelector:@selector(_layoutOverlayFooterViewIfNecessary)]) {
 		%init(SokoDockListFooter);
@@ -557,14 +660,37 @@ static void SokoInitDock(void) {
 
 static void SokoInitLiquidAssPoster(void) {
 	%init(SokoLiquidAssPoster);
+	if ([objc_getClass("LGClockEditorState") instancesRespondToSelector:@selector(setController:)] &&
+		[objc_getClass("PRPosterConfiguration") instancesRespondToSelector:@selector(loadUserInfoWithError:)]) {
+		%init(SokoLiquidAssEditorDefaults);
+	}
 
 	SokoDockGeometryObserve(^{
 		[SokoPosterLayout relayoutAnimated:YES];
 	});
 }
 
+static BOOL SokoInitPosterPreview(void) {
+	static BOOL initialized;
+	if (initialized) return YES;
+	Class posterCellClass = NSClassFromString(@"PosterBoard.LockScreenPosterCollectionViewCell") ?:
+		NSClassFromString(@"_TtC11PosterBoard34LockScreenPosterCollectionViewCell");
+	if (posterCellClass) {
+		%init(SokoPosterPreview, SokoLockScreenPosterCollectionViewCell = posterCellClass);
+		initialized = YES;
+	}
+	return initialized;
+}
+
 static void SokoInitPoster(void) {
 	if (![SokoPosterLayout isSupported]) return;
+	if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.PosterBoard"] && !SokoInitPosterPreview()) {
+		gPosterPreviewLaunchObserver = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidFinishLaunchingNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
+			SokoInitPosterPreview();
+			[NSNotificationCenter.defaultCenter removeObserver:gPosterPreviewLaunchObserver];
+			gPosterPreviewLaunchObserver = nil;
+		}];
+	}
 	if (SokoLiquidAssClockEnabled()) {
 		SokoInitLiquidAssPoster();
 		return;

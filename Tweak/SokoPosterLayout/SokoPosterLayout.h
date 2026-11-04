@@ -6,6 +6,8 @@
 
 @interface SokoPosterLayout : NSObject
 + (BOOL)isSupported;
++ (void)updateDepthMaskForPosterCell:(UIView *)cell;
++ (void)clearDepthMaskForPosterCell:(UIView *)cell;
 
 + (CGRect)frameByAdjustingFrame:(CGRect)frame forElement:(unsigned long long)element boundingRect:(CGRect)boundingRect variant:(unsigned long long)variant layoutController:(CSProminentLayoutController *)layoutController;
 + (CGRect)reticleFrameByAdjustingFrame:(CGRect)frame layoutController:(CSProminentLayoutController *)layoutController boundingRect:(CGRect)boundingRect;

@@ -15,10 +15,37 @@
 @end
 
 @interface CSCoverSheetView : UIView
+@property (nonatomic, readonly) UIView *wallpaperFloatingLayerContainerView;
 @property (nonatomic, readonly) UIView *slideableContentView;
 @property (nonatomic, readonly) CSQuickActionsView *quickActionsView;
 @property (nonatomic, readonly) double dateViewScale;
 - (void)_layoutDateView;
+@end
+
+@interface FBSSceneSettings : NSObject
+- (BOOL)pr_isDepthEffectDisallowed;
+- (BOOL)pr_isComplicationRowConfigured;
+@end
+
+@interface FBSMutableSceneSettings : FBSSceneSettings
+- (void)pr_setDepthEffectDisallowed:(BOOL)disallowed;
+@end
+
+@interface FBScene : NSObject
+@property (nonatomic, readonly) FBSSceneSettings *settings;
+- (void)updateSettings:(FBSSceneSettings *)settings withTransitionContext:(id)context;
+@end
+
+@interface PBUIPosterViewController : UIViewController
+- (void)scene:(FBScene *)scene willUpdateSettings:(FBSMutableSceneSettings *)settings withTransitionContext:(id)context;
+@end
+
+@interface PBUIPosterLockViewController : UIViewController
+- (id)portalSourceForReplicaView:(UIView *)replica;
+@end
+
+@interface PBUIPortalReplicaView : UIView
+- (void)setNeedsSourceUpdate;
 @end
 
 @interface CSCoverSheetViewController : UIViewController
@@ -57,6 +84,10 @@
 
 @interface CSProminentDisplayView : UIView
 @property (nonatomic, readonly) UIView *vibrancyEffectView;
+@property (nonatomic, readonly) UIView *complicationRowView;
+@end
+
+@interface SokoLockScreenPosterCollectionViewCell : UICollectionViewCell
 @end
 
 @interface CSProminentDisplayViewController : UIViewController
@@ -127,6 +158,7 @@
 @end
 
 @interface PRPosterComplicationLayout : NSObject
+@property (nonatomic, readonly) NSArray *complications;
 - (BOOL)isEqualToComplicationLayout:(id)layout;
 - (void)encodeWithBSXPCCoder:(id)coder;
 - (instancetype)initWithBSXPCCoder:(id)coder;
@@ -139,6 +171,10 @@
 @interface PRSPosterConfiguration : NSObject
 @property (nonatomic, readonly) id _path;
 - (id)pr_loadComplicationLayoutWithError:(NSError **)error;
+- (NSDictionary *)loadUserInfoWithError:(NSError **)error;
+@end
+
+@interface PRPosterConfiguration : NSObject
 - (NSDictionary *)loadUserInfoWithError:(NSError **)error;
 @end
 
@@ -157,6 +193,10 @@
 
 @interface PREditor : NSObject
 - (void)setCoveredByHostModalPresentation:(BOOL)covered;
+@end
+
+@interface LGClockEditorState : NSObject
+- (void)setController:(UIViewController *)controller;
 @end
 
 @interface PREditorRootViewController : UIViewController

@@ -17,6 +17,11 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 @property (nonatomic) BOOL attached;
 @property (nonatomic) CGFloat dockTopY;
 @property (nonatomic) CGFloat dockBottomY;
+@property (nonatomic, strong) NSMapTable<UIView *, NSNumber *> *depthEligibilityByReplica;
+@property (nonatomic, strong) NSMapTable<FBScene *, NSNumber *> *nativeDepthVetoByScene;
+@property (nonatomic, strong) NSMapTable<UIView *, FBScene *> *depthSceneByReplica;
+@property (nonatomic, strong) NSHashTable<FBScene *> *overriddenDepthScenes;
+@property (nonatomic) BOOL updatingWallpaperDepthSettings;
 @end
 
 @implementation SokoDockCoordinator
@@ -77,6 +82,10 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 		_notificationList = [[SokoNotificationList alloc] initWithCoverSheetViewController:controller dock:self];
 		_dockTopY = NAN;
 		_dockBottomY = NAN;
+		_depthEligibilityByReplica = [NSMapTable weakToStrongObjectsMapTable];
+		_nativeDepthVetoByScene = [NSMapTable weakToStrongObjectsMapTable];
+		_depthSceneByReplica = [NSMapTable weakToWeakObjectsMapTable];
+		_overriddenDepthScenes = [NSHashTable weakObjectsHashTable];
 
 		NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 		[center addObserver:self selector:@selector(prominentDisplayVibrancyDidChange:) name:SokoProminentDisplayVibrancyDidChangeNotification object:nil];
@@ -104,6 +113,7 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 
 	[self.coverSheetViewController.viewIfLoaded setNeedsLayout];
 	[self.notificationList updateLayout];
+	[self updateWallpaperDepthEffectSource];
 }
 
 - (void)coverSheetViewDidLayout {
@@ -111,6 +121,7 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 
 	if (![self shouldHostDock]) {
 		if (self.attached) [self refresh];
+		[self updateWallpaperDepthEffectSource];
 		return;
 	}
 
@@ -119,6 +130,110 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 
 	[self layoutDock];
 	[self.notificationList updateLayout];
+	[self updateWallpaperDepthEffectSource];
+}
+
+- (BOOL)allowsWallpaperDepthEffect {
+	// Opacity changes during locking; eligibility follows the actual hosted layout.
+	return self.attached && !isnan(self.dockTopY) && !self.hostView.hidden && [self shouldHostDock] &&
+		SokoIsPortrait(self.coverSheetViewController.viewIfLoaded.bounds);
+}
+
+- (void)updateWallpaperDepthEffectSource {
+	[self updateWallpaperDepthSettings];
+	CSCoverSheetView *coverSheet = (CSCoverSheetView *)self.coverSheetViewController.viewIfLoaded;
+	if (![coverSheet respondsToSelector:@selector(wallpaperFloatingLayerContainerView)]) return;
+
+	Class replicaClass = NSClassFromString(@"PBUIPosterFloatingLayerReplica");
+	if (!replicaClass) return;
+	BOOL allowed = self.allowsWallpaperDepthEffect;
+	for (UIView *replica in coverSheet.wallpaperFloatingLayerContainerView.subviews) {
+		if (![replica isKindOfClass:replicaClass] || ![replica respondsToSelector:@selector(setNeedsSourceUpdate)]) continue;
+		NSNumber *previous = [self.depthEligibilityByReplica objectForKey:replica];
+		if (previous && previous.boolValue == allowed) continue;
+
+		// Cache before the native refresh, which can request another layout pass.
+		[self.depthEligibilityByReplica setObject:@(allowed) forKey:replica];
+		if (allowed || previous.boolValue) [(PBUIPortalReplicaView *)replica setNeedsSourceUpdate];
+	}
+}
+
+- (void)registerWallpaperDepthScene:(FBScene *)scene forReplica:(UIView *)replica {
+	if (!scene || !replica ||
+		![scene.settings respondsToSelector:@selector(pr_isDepthEffectDisallowed)] ||
+		![scene respondsToSelector:@selector(updateSettings:withTransitionContext:)]) return;
+	if ([self.depthSceneByReplica objectForKey:replica] == scene &&
+		[self.nativeDepthVetoByScene objectForKey:scene]) return;
+
+	[self.depthSceneByReplica setObject:scene forKey:replica];
+	if (![self.nativeDepthVetoByScene objectForKey:scene]) {
+		[self.nativeDepthVetoByScene setObject:@([scene.settings pr_isDepthEffectDisallowed]) forKey:scene];
+	}
+	// Source resolution can happen inside native layout. Publish after it returns.
+	__weak SokoDockCoordinator *weakSelf = self;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[weakSelf updateWallpaperDepthEffectSource];
+	});
+}
+
+- (BOOL)hasWallpaperDepthReplicaForScene:(FBScene *)scene {
+	CSCoverSheetView *coverSheet = (CSCoverSheetView *)self.coverSheetViewController.viewIfLoaded;
+	if (![coverSheet respondsToSelector:@selector(wallpaperFloatingLayerContainerView)]) return NO;
+	for (UIView *replica in coverSheet.wallpaperFloatingLayerContainerView.subviews) {
+		if ([self.depthSceneByReplica objectForKey:replica] == scene) return YES;
+	}
+	return NO;
+}
+
+- (void)prepareWallpaperDepthScene:(FBScene *)scene settings:(FBSMutableSceneSettings *)settings {
+	if (![self.nativeDepthVetoByScene objectForKey:scene] || self.updatingWallpaperDepthSettings ||
+		![settings respondsToSelector:@selector(pr_setDepthEffectDisallowed:)]) return;
+
+	BOOL nativeVeto = [settings pr_isDepthEffectDisallowed];
+	BOOL rowConfigured = ![settings respondsToSelector:@selector(pr_isComplicationRowConfigured)] || [settings pr_isComplicationRowConfigured];
+	BOOL allowed = rowConfigured && self.allowsWallpaperDepthEffect && [self hasWallpaperDepthReplicaForScene:scene];
+	BOOL overridden = [self.overriddenDepthScenes containsObject:scene];
+	if (!rowConfigured) {
+		// Removing the last widget supplies fresh native policy, not a copied override.
+		[self.overriddenDepthScenes removeObject:scene];
+		overridden = NO;
+	}
+	// A copied NO is ours until restoration completes, even if layout just changed.
+	if (nativeVeto || !overridden) [self.nativeDepthVetoByScene setObject:@(nativeVeto) forKey:scene];
+	if (allowed) {
+		if (nativeVeto) [self.overriddenDepthScenes addObject:scene];
+		[settings pr_setDepthEffectDisallowed:NO];
+	} else if (overridden) {
+		[settings pr_setDepthEffectDisallowed:[[self.nativeDepthVetoByScene objectForKey:scene] boolValue]];
+		[self.overriddenDepthScenes removeObject:scene];
+	}
+}
+
+- (void)updateWallpaperDepthSettings {
+	if (self.updatingWallpaperDepthSettings) return;
+	for (FBScene *scene in self.nativeDepthVetoByScene.keyEnumerator.allObjects) {
+		BOOL current = [self hasWallpaperDepthReplicaForScene:scene];
+		BOOL rowConfigured = ![scene.settings respondsToSelector:@selector(pr_isComplicationRowConfigured)] || [scene.settings pr_isComplicationRowConfigured];
+		BOOL allowed = rowConfigured && self.allowsWallpaperDepthEffect && current;
+		BOOL disallowed = allowed ? NO : [[self.nativeDepthVetoByScene objectForKey:scene] boolValue];
+		if ([scene.settings pr_isDepthEffectDisallowed] == disallowed) {
+			if (!allowed) [self.overriddenDepthScenes removeObject:scene];
+			if (!current) [self.nativeDepthVetoByScene removeObjectForKey:scene];
+			continue;
+		}
+		FBSMutableSceneSettings *settings = [scene.settings mutableCopy];
+		if (![settings respondsToSelector:@selector(pr_setDepthEffectDisallowed:)]) continue;
+		[settings pr_setDepthEffectDisallowed:disallowed];
+		self.updatingWallpaperDepthSettings = YES;
+		@try {
+			if (allowed) [self.overriddenDepthScenes addObject:scene];
+			[scene updateSettings:settings withTransitionContext:nil];
+			if (!allowed) [self.overriddenDepthScenes removeObject:scene];
+			if (!current) [self.nativeDepthVetoByScene removeObjectForKey:scene];
+		} @finally {
+			self.updatingWallpaperDepthSettings = NO;
+		}
+	}
 }
 
 - (BOOL)shouldHostDock {

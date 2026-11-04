@@ -1,7 +1,42 @@
 #import "SokoCompatibility.h"
+#import "../SokoRuntime/SokoRuntime.h"
+
+@protocol SokoLiquidAssEditorEnvironment <NSObject>
+@property (nonatomic, readonly) id sourceContents;
+@end
+
+@protocol SokoLiquidAssEditor <NSObject>
+@property (nonatomic, readonly) id<SokoLiquidAssEditorEnvironment> environment;
+@end
 
 static NSString *const kSokoLiquidAssWidgetsAtTopKey = @"dylv.liquidass.clock.widgetsAtTop";
 static NSString *const kSokoLiquidAssStyleKey = @"dylv.liquidass.clock.style";
+static NSString *const kSokoLiquidAssResizeProgressKey = @"dylv.liquidass.clock.resizeProgress";
+
+static const void *kSokoLiquidAssEditorSourceKey = &kSokoLiquidAssEditorSourceKey;
+
+void SokoLiquidAssPrepareEditorDefaults(UIViewController *controller) {
+	id<SokoLiquidAssEditor> editor = SokoIvarObject(controller, "_editor");
+	id<SokoLiquidAssEditorEnvironment> environment = [editor respondsToSelector:@selector(environment)] ? editor.environment : nil;
+	id source = [environment respondsToSelector:@selector(sourceContents)] ? environment.sourceContents : nil;
+	if ([source respondsToSelector:@selector(loadUserInfoWithError:)]) {
+		objc_setAssociatedObject(source, kSokoLiquidAssEditorSourceKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	}
+}
+
+NSDictionary *SokoLiquidAssEditorUserInfo(id configuration, NSDictionary *info, NSError *error) {
+	if (![objc_getAssociatedObject(configuration, kSokoLiquidAssEditorSourceKey) boolValue]) return info;
+	if (error && !([error.domain isEqualToString:NSCocoaErrorDomain] &&
+		(error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError))) return info;
+	if (info && ![info isKindOfClass:[NSDictionary class]]) return info;
+	if (info[kSokoLiquidAssResizeProgressKey]) return info;
+
+	// Match the preview's full-height default. LiquidAss still gives staged target
+	// values precedence over this source fallback, including an explicit zero.
+	NSMutableDictionary *defaults = info ? [info mutableCopy] : [NSMutableDictionary dictionary];
+	defaults[kSokoLiquidAssResizeProgressKey] = @1.0;
+	return defaults;
+}
 
 BOOL SokoLiquidAssClockEnabled(void) {
 	static BOOL enabled;
