@@ -1,9 +1,23 @@
 #import "Soko.h"
 
+@interface PREditingSceneViewController (SokoDepthEffect)
+@property (nonatomic, strong) NSNumber *soko_bottomDepthRow;
+@end
+
 static BOOL gActivePosterUsesBottomLayout;
 static __thread const void *gWallpaperDepthQuerySettings;
+static __thread const void *gEditorDepthQueryController;
 static __weak CSCoverSheetViewController *gCoverSheetViewController;
 static id gPosterPreviewLaunchObserver;
+
+static void SokoRefreshEditorDepth(PREditingSceneViewController *controller) {
+	BOOL bottom = [SokoPosterLayout editingSceneViewControllerHasBottomWidgetRow:controller];
+	NSNumber *previous = controller.soko_bottomDepthRow;
+	if (previous && previous.boolValue == bottom) return;
+	// Record before publishing; a native scene update can request layout again.
+	controller.soko_bottomDepthRow = @(bottom);
+	[controller _updateSceneSettingsForDepthEffectDisallowed];
+}
 
 static SokoDockCoordinator *SokoCoordinator(void) {
 	CSCoverSheetViewController *coverSheet = gCoverSheetViewController;
@@ -303,10 +317,6 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 	if ([SokoPosterLayout registerEditingSceneViewController:self]) [SokoLayoutSwipeHandler installOnEditingSceneViewController:self];
 }
 
-- (BOOL)_hasGraphicComplications {
-	return [SokoPosterLayout isIgnoringGraphicComplications] ? NO : %orig;
-}
-
 - (void)setPresentedComplicationsGallery:(UINavigationController *)gallery {
 	%orig;
 
@@ -327,6 +337,62 @@ static BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void)) {
 	%orig;
 
 	[SokoPosterLayout setCoveredByHostModalPresentation:covered];
+}
+
+%end
+
+%end
+
+%group SokoEditorGraphicComplications
+
+%hook PREditingSceneViewController
+
+- (BOOL)_hasGraphicComplications {
+	if (gEditorDepthQueryController == (__bridge const void *)self || [SokoPosterLayout isIgnoringGraphicComplications]) return NO;
+	return %orig;
+}
+
+%end
+
+%end
+
+%group SokoEditorDepthEffect
+
+%hook PREditingSceneViewController
+
+%property (nonatomic, strong) NSNumber *soko_bottomDepthRow;
+
+- (BOOL)_shouldDepthEffectBeDisallowed {
+	if (![SokoPosterLayout editingSceneViewControllerHasBottomWidgetRow:self]) return %orig;
+
+	// Keep native variant, focus, and provider restrictions. Only the widget
+	// presence check made by this controller's depth predicate is suppressed.
+	const void *previous = gEditorDepthQueryController;
+	gEditorDepthQueryController = (__bridge const void *)self;
+	@try {
+		return %orig;
+	} @finally {
+		gEditorDepthQueryController = previous;
+	}
+}
+
+- (void)viewDidLayoutSubviews {
+	%orig;
+	SokoRefreshEditorDepth(self);
+}
+
+%end
+
+%hook PRComplicationContainerViewController
+
+- (void)viewDidLayoutSubviews {
+	%orig;
+	// LiquidAss lays out its row independently of the editing scene's view.
+	for (UIViewController *parent = self.parentViewController; parent; parent = parent.parentViewController) {
+		if (![parent isKindOfClass:%c(PREditingSceneViewController)]) continue;
+		SokoRefreshEditorDepth((PREditingSceneViewController *)parent);
+		break;
+	}
 }
 
 %end
@@ -684,6 +750,18 @@ static BOOL SokoInitPosterPreview(void) {
 
 static void SokoInitPoster(void) {
 	if (![SokoPosterLayout isSupported]) return;
+	Class editorClass = objc_getClass("PREditingSceneViewController");
+	if ([editorClass instancesRespondToSelector:@selector(_hasGraphicComplications)]) {
+		%init(SokoEditorGraphicComplications);
+		// iOS 16's editor compositor obscures bottom widgets with depth enabled.
+		// Keep that established policy while enabling the iOS 18 editor path.
+		if (@available(iOS 18.0, *)) {
+			if ([editorClass instancesRespondToSelector:@selector(_shouldDepthEffectBeDisallowed)] &&
+				[editorClass instancesRespondToSelector:@selector(_updateSceneSettingsForDepthEffectDisallowed)]) {
+				%init(SokoEditorDepthEffect);
+			}
+		}
+	}
 	if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.PosterBoard"] && !SokoInitPosterPreview()) {
 		gPosterPreviewLaunchObserver = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidFinishLaunchingNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
 			SokoInitPosterPreview();

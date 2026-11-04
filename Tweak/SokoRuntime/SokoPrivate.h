@@ -220,6 +220,8 @@
 @property (nonatomic, strong) UIViewController *presentedControlWidgetConfigurationViewController;
 - (instancetype)initWithProvider:(id)provider contents:(id)contents configurableOptions:(id)configurableOptions configuredProperties:(PRPosterConfiguredProperties *)configuredProperties additionalInfo:(id)additionalInfo;
 - (BOOL)_hasGraphicComplications;
+- (BOOL)_shouldDepthEffectBeDisallowed;
+- (void)_updateSceneSettingsForDepthEffectDisallowed;
 - (BOOL)_shouldAllowAddComplicationsTapGesture;
 - (BOOL)_shouldAllowAddComplicationsTapGestureForLocation:(long long)location;
 - (void)_updateAddComplicationsTapGestureAllowed;

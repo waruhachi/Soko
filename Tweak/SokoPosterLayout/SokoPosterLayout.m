@@ -20,6 +20,20 @@ static CSProminentDisplayView *SokoVisibleProminentDisplay(UIView *view) {
 	return nil;
 }
 
+static BOOL SokoHasBottomGraphicRow(UIViewController *controller, UIView *editorView, Class graphicClass) {
+	UIView *view = controller.viewIfLoaded;
+	if (!view || view.hidden || view.alpha <= 0.01 || view.window != editorView.window) return NO;
+	if ([controller isKindOfClass:graphicClass]) {
+		CGRect row = [view convertRect:view.bounds toView:editorView];
+		return !CGRectIsEmpty(row) && CGRectGetMinY(row) >= CGRectGetMidY(editorView.bounds) &&
+			CGRectContainsRect(editorView.bounds, row);
+	}
+	for (UIViewController *child in controller.childViewControllers) {
+		if (SokoHasBottomGraphicRow(child, editorView, graphicClass)) return YES;
+	}
+	return NO;
+}
+
 static const CGFloat kSokoBottomRowEditingOffset = 28.0;
 
 static const void *kSokoEditorBottomLayoutKey = &kSokoEditorBottomLayoutKey;
@@ -236,6 +250,21 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 	return [objc_getAssociatedObject(controller, kSokoEditorBottomLayoutKey) boolValue];
 }
 
++ (BOOL)editingSceneViewControllerHasBottomWidgetRow:(PREditingSceneViewController *)controller {
+	if (![self editingSceneViewControllerEditsLockScreen:controller]) return NO;
+	if (!SokoLiquidAssClockEnabled() && ![self editingSceneViewControllerUsesBottomLayout:controller]) return NO;
+	UIView *editorView = controller.viewIfLoaded;
+	if (!editorView.window || !SokoIsPortrait(editorView.bounds)) return NO;
+	Class graphicClass = NSClassFromString(@"PRGraphicComplicationContainerViewController");
+	if (!graphicClass) return NO;
+	// The native collection is an NSHashTable on iOS 18. Both it and older
+	// array-backed implementations support fast enumeration.
+	for (UIViewController *container in controller.complicationContainerViewControllers) {
+		if (SokoHasBottomGraphicRow(container, editorView, graphicClass)) return YES;
+	}
+	return NO;
+}
+
 + (void)setUsesBottomLayout:(BOOL)usesBottomLayout forEditingSceneViewController:(PREditingSceneViewController *)controller {
 	if (usesBottomLayout == [self editingSceneViewControllerUsesBottomLayout:controller]) return;
 
@@ -244,6 +273,11 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 
 	[[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 	[self relayoutAnimated:YES];
+	if (@available(iOS 18.0, *)) {
+		if ([controller respondsToSelector:@selector(_updateSceneSettingsForDepthEffectDisallowed)]) {
+			[controller _updateSceneSettingsForDepthEffectDisallowed];
+		}
+	}
 }
 
 + (BOOL)editingSceneViewControllerIsDismissing:(PREditingSceneViewController *)controller {

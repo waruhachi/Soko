@@ -20,6 +20,7 @@
 
 + (void)setInitialComplicationLayout:(id)layout forEditingSceneViewController:(PREditingSceneViewController *)controller;
 + (BOOL)editingSceneViewControllerUsesBottomLayout:(PREditingSceneViewController *)controller;
++ (BOOL)editingSceneViewControllerHasBottomWidgetRow:(PREditingSceneViewController *)controller;
 + (void)setUsesBottomLayout:(BOOL)usesBottomLayout forEditingSceneViewController:(PREditingSceneViewController *)controller;
 + (NSNumber *)bottomLayoutValueForDismissingEditor;
 
