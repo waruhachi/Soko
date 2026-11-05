@@ -13,13 +13,15 @@ static NSHashTable<PREditorRootViewController *> *gEditorRootViewControllers;
 + (void)registerEditorRootViewController:(PREditorRootViewController *)controller {
 	if (!gEditorRootViewControllers) gEditorRootViewControllers = [NSHashTable weakObjectsHashTable];
 	[gEditorRootViewControllers addObject:controller];
+	[self registerReticleForEditorRootViewController:controller];
+	[self updateLookControlsForEditorRootViewController:controller];
+}
 
++ (void)registerReticleForEditorRootViewController:(PREditorRootViewController *)controller {
 	CGRect frame = [NSClassFromString(@"CSProminentLayoutController") frameForElements:kSokoComplicationRowElement variant:kSokoReticleVariant];
 	if (!CGRectIsNull(frame)) {
 		objc_setAssociatedObject(controller, kSokoReticleBaseMinYKey, @(CGRectGetMinY(frame)), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
-
-	[self updateLookControlsForEditorRootViewController:controller];
 }
 
 + (void)update {

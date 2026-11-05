@@ -14,6 +14,7 @@ FOUNDATION_EXPORT UIEdgeInsets SokoAdjustedFooterInsets(UIEdgeInsets insets, CSC
 FOUNDATION_EXPORT BOOL SokoAllowsAddGestureOverRow(BOOL (^orig)(void));
 
 FOUNDATION_EXPORT void SokoDockInstallHooks(void);
+FOUNDATION_EXPORT void SokoAstronomyInstallHooks(void);
 FOUNDATION_EXPORT void SokoDockListFooterInstallHooks(void);
 FOUNDATION_EXPORT void SokoDockContainerFooterInstallHooks(void);
 FOUNDATION_EXPORT void SokoDockWidgetDescriptorsInstallHooks(void);

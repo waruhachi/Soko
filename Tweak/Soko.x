@@ -67,6 +67,12 @@ static BOOL SokoInitPosterPreview(void) {
 }
 
 static void SokoInitPoster(void) {
+	// Astronomy uses the stock complication geometry to position its planets.
+	// SpringBoard already hosts Soko's bottom row outside the renderer.
+	if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.NanoUniverse.AegirProxyApp.AegirPoster"]) {
+		SokoAstronomyInstallHooks();
+		return;
+	}
 	if (![SokoPosterLayout isSupported]) return;
 	Class editorClass = objc_getClass("PREditingSceneViewController");
 	if ([editorClass instancesRespondToSelector:@selector(_hasGraphicComplications)]) {
