@@ -143,6 +143,7 @@
 @property (nonatomic, strong) UIView *overlayFooterView;
 @property (nonatomic) UIEdgeInsets overlayFooterViewEdgeInsets;
 @property (nonatomic, readonly) CGRect visibleRect;
+@property (nonatomic, readonly) BOOL hasPerformedFirstLayout;
 - (void)_layoutOverlayFooterViewIfNecessary;
 @end
 

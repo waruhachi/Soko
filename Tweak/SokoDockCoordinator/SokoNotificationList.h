@@ -16,4 +16,5 @@
 - (double)listMinYByAdjustingListMinY:(double)listMinY;
 - (UIEdgeInsets)footerInsetsByAdjustingInsets:(UIEdgeInsets)insets forCombinedListViewController:(CSCombinedListViewController *)combinedListViewController;
 - (BOOL)getFooterCenterY:(CGFloat *)centerY forListView:(UIView *)listView;
+- (BOOL)getRestoredFrame:(CGRect *)frame forListView:(UIView *)listView;
 @end

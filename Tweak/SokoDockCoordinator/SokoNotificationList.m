@@ -69,9 +69,11 @@ static const CGFloat kSokoNotificationToDockSpacing = 10.0;
 	if (!list.superview || !dockContainer) return insets;
 
 	CGFloat dockTop = [dockContainer convertPoint:CGPointMake(0.0, self.dock.dockTopY) toView:list.superview].y;
-	CGFloat margin = CGRectGetMaxY(list.frame) - dockTop + kSokoNotificationToDockSpacing;
+	BOOL hasContainer = [self containerForStructuredListViewController:structured] != nil;
+	CGFloat listBottom = hasContainer ? CGRectGetMaxY(list.frame) : CGRectGetMaxY(list.superview.bounds);
+	CGFloat margin = listBottom - dockTop + kSokoNotificationToDockSpacing;
 
-	if ([self containerForStructuredListViewController:structured]) {
+	if (hasContainer) {
 		CGFloat shift = MAX(0.0, margin - kSokoListFooterPadding - insets.top);
 		insets.top += shift;
 		insets.bottom += shift;
@@ -110,6 +112,21 @@ static const CGFloat kSokoNotificationToDockSpacing = 10.0;
 	}
 
 	if (centerY) *centerY = y;
+	return YES;
+}
+
+- (BOOL)getRestoredFrame:(CGRect *)frame forListView:(UIView *)listView {
+	if (!self.dock.dockVisible || !listView.superview) return NO;
+
+	NCNotificationStructuredListViewController *structured = [self structuredListViewControllerForCombinedListViewController:[self combinedListViewController]];
+	if (listView != [self listViewForStructuredListViewController:structured]) return NO;
+
+	CGRect restoredFrame = listView.frame;
+	CGFloat height = CGRectGetHeight(listView.superview.bounds);
+	if (fabs(CGRectGetHeight(restoredFrame) - height) <= 0.5) return NO;
+
+	restoredFrame.size.height = height;
+	if (frame) *frame = restoredFrame;
 	return YES;
 }
 

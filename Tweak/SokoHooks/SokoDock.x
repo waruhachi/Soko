@@ -113,6 +113,17 @@ void SokoDockInstallHooks(void) {
 	SokoMoveFooter(self.overlayFooterView, self, NULL);
 }
 
+- (void)setFrame:(CGRect)frame {
+	%orig;
+
+	CGRect restoredFrame;
+	if (![[SokoDockCoordinator activeCoordinator].notificationList getRestoredFrame:&restoredFrame forListView:self]) return;
+
+	void (*setScrollViewFrame)(id, SEL, CGRect) = (void (*)(id, SEL, CGRect))[UIScrollView instanceMethodForSelector:_cmd];
+	setScrollViewFrame(self, _cmd, restoredFrame);
+	if (self.hasPerformedFirstLayout) [self layoutIfNeeded];
+}
+
 %end
 
 %end
