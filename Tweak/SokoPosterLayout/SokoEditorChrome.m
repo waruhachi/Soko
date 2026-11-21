@@ -102,6 +102,12 @@ static NSHashTable<PREditorRootViewController *> *gEditorRootViewControllers;
 	return lookNameHeight + kSokoLookNameToPageControlSpacing + controller.pageControl.intrinsicContentSize.height;
 }
 
++ (BOOL)editorRootViewControllerHasMenuElements:(PREditorRootViewController *)controller {
+	NSArray *leading = [controller respondsToSelector:@selector(leadingMenuElementViews)] ? controller.leadingMenuElementViews : nil;
+	NSArray *trailing = [controller respondsToSelector:@selector(trailingMenuElementViews)] ? controller.trailingMenuElementViews : nil;
+	return leading.count > 0 || trailing.count > 0;
+}
+
 + (void)updateLookControlsForEditorRootViewController:(PREditorRootViewController *)controller {
 	BOOL hasControls = [controller respondsToSelector:@selector(controlsDividerVibrancyView)] &&
 		[controller respondsToSelector:@selector(pageControl)] &&
@@ -118,8 +124,13 @@ static NSHashTable<PREditorRootViewController *> *gEditorRootViewControllers;
 	BOOL docked = [SokoPosterLayout usesBottomEditingRow] && !isnan(inset) && SokoIsPortrait(bounds);
 
 	if (docked) {
-		CGFloat height = [self lookControlsHeightForEditorRootViewController:controller];
-		dock.constant = round(kSokoDockBottomToButtonCenter - inset + height / 2.0);
+		CGRect row = [SokoPosterLayout editingRowFrame];
+		if ([self editorRootViewControllerHasMenuElements:controller] && !CGRectIsNull(row)) {
+			dock.constant = round(CGRectGetMinY(row) + stock.constant - CGRectGetHeight(bounds));
+		} else {
+			CGFloat height = [self lookControlsHeightForEditorRootViewController:controller];
+			dock.constant = round(kSokoDockBottomToButtonCenter - inset + height / 2.0);
+		}
 	}
 
 	if (stock.active == !docked && dock.active == docked) return;

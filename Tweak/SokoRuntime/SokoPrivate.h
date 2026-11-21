@@ -221,6 +221,8 @@
 @property (nonatomic, readonly) UIView *pageControl;
 @property (nonatomic, readonly) UIView *lookNameLabel;
 @property (nonatomic, readonly) UIView *controlsDividerVibrancyView;
+@property (nonatomic, readonly) NSArray<UIView *> *leadingMenuElementViews;
+@property (nonatomic, readonly) NSArray<UIView *> *trailingMenuElementViews;
 - (void)updateReticleViewFrames;
 @end
 
