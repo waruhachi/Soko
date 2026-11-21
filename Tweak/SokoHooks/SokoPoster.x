@@ -1,6 +1,25 @@
 #import "SokoHookSupport.h"
 
+static BOOL SokoEventBeginsTouch(UIEvent *event) {
+	if (event.type != UIEventTypeTouches) return NO;
+
+	for (UITouch *touch in event.allTouches) {
+		if (touch.phase == UITouchPhaseBegan) return YES;
+	}
+	return NO;
+}
+
 %group SokoPoster
+
+%hook UIApplication
+
+- (void)sendEvent:(UIEvent *)event {
+	// Poster scene windows can appear after the editor loads; attach before the first touch is dispatched.
+	if (SokoEventBeginsTouch(event)) [SokoLayoutSwipeHandler attachSwipesToAllWindows];
+	%orig;
+}
+
+%end
 
 %hook CSProminentLayoutController
 
@@ -24,6 +43,12 @@
 	%orig;
 
 	[SokoPosterLayout registerComplicationContainerViewController:self];
+	[SokoLayoutSwipeHandler installOnComplicationContainerViewController:self];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+	%orig;
+
 	[SokoLayoutSwipeHandler installOnComplicationContainerViewController:self];
 }
 
@@ -54,6 +79,12 @@
 	if ([SokoPosterLayout registerEditingSceneViewController:self]) [SokoLayoutSwipeHandler installOnEditingSceneViewController:self];
 }
 
+- (void)viewDidAppear:(BOOL)animated {
+	%orig;
+
+	if ([SokoPosterLayout editingSceneViewControllerEditsLockScreen:self]) [SokoLayoutSwipeHandler installOnEditingSceneViewController:self];
+}
+
 - (void)setPresentedComplicationsGallery:(UINavigationController *)gallery {
 	%orig;
 
@@ -82,4 +113,13 @@
 
 void SokoPosterInstallHooks(void) {
 	%init(SokoPoster);
+
+	// Row swipes land in the poster extension, which forwards them here as layout requests.
+	SokoEditorObserveLayoutRequests(^(BOOL usesBottomLayout) {
+		for (PREditingSceneViewController *controller in [SokoPosterLayout editingSceneViewControllers]) {
+			if (![SokoPosterLayout canSwipeEditingSceneViewController:controller]) continue;
+			[SokoPosterLayout setUsesBottomLayout:usesBottomLayout forEditingSceneViewController:controller];
+			break;
+		}
+	});
 }

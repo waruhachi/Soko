@@ -142,3 +142,25 @@ BOOL SokoEditorDodging(void) {
 	SokoLoadIfNeeded();
 	return gDodging;
 }
+
+static NSString *const SokoEditorLayoutRequestNotification = @"moe.waru.soko.layout.request";
+static void (^gLayoutRequestHandler)(BOOL);
+
+void SokoEditorRequestLayout(BOOL usesBottomLayout) {
+	SokoWriteState(SokoEditorLayoutRequestNotification, usesBottomLayout ? 2 : 1);
+}
+
+static void SokoEditorLayoutRequestDidChange(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	uint64_t state = SokoReadState(SokoEditorLayoutRequestNotification);
+	if (!state || !gLayoutRequestHandler) return;
+
+	BOOL usesBottomLayout = state == 2;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		gLayoutRequestHandler(usesBottomLayout);
+	});
+}
+
+void SokoEditorObserveLayoutRequests(void (^handler)(BOOL usesBottomLayout)) {
+	gLayoutRequestHandler = [handler copy];
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, SokoEditorLayoutRequestDidChange, (__bridge CFStringRef)SokoEditorLayoutRequestNotification, NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+}

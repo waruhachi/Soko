@@ -24,3 +24,6 @@ FOUNDATION_EXPORT BOOL SokoEditorUsesBottomLayout(void);
 
 FOUNDATION_EXPORT void SokoEditorPublishDodging(BOOL dodging);
 FOUNDATION_EXPORT BOOL SokoEditorDodging(void);
+
+FOUNDATION_EXPORT void SokoEditorRequestLayout(BOOL usesBottomLayout);
+FOUNDATION_EXPORT void SokoEditorObserveLayoutRequests(void (^handler)(BOOL usesBottomLayout));
