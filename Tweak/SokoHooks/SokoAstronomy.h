@@ -5,11 +5,6 @@
 - (BOOL)pr_usesEditingLayout;
 @end
 
-@interface PRPosterEnvironmentImpl : NSObject
-- (CGRect)contentCutoutBounds;
-- (CGRect)floatingObscurableBounds;
-@end
-
 @protocol SokoAstronomyEnvironmentSource <NSObject>
 @property (nonatomic, readonly) id environment;
 @end

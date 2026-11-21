@@ -134,9 +134,10 @@ static __weak SokoDockCoordinator *gActiveCoordinator;
 }
 
 - (BOOL)allowsWallpaperDepthEffect {
+	if (!SokoIsPortrait(self.coverSheetViewController.viewIfLoaded.bounds)) return NO;
+	if (@available(iOS 18.0, *)) return YES;
 	// Opacity changes during locking; eligibility follows the actual hosted layout.
-	return self.attached && !isnan(self.dockTopY) && !self.hostView.hidden && [self shouldHostDock] &&
-		SokoIsPortrait(self.coverSheetViewController.viewIfLoaded.bounds);
+	return self.attached && !isnan(self.dockTopY) && !self.hostView.hidden && [self shouldHostDock];
 }
 
 - (void)updateWallpaperDepthEffectSource {

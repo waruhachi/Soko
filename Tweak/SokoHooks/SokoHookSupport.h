@@ -24,6 +24,7 @@ FOUNDATION_EXPORT void SokoDockFooterInsetsForOrientationInstallHooks(void);
 FOUNDATION_EXPORT void SokoPosterInstallHooks(void);
 FOUNDATION_EXPORT void SokoEditorGraphicComplicationsInstallHooks(void);
 FOUNDATION_EXPORT void SokoEditorDepthEffectInstallHooks(void);
+FOUNDATION_EXPORT void SokoRendererDepthEffectInstallHooks(void);
 FOUNDATION_EXPORT void SokoInstallPosterPreviewHooks(Class posterCellClass);
 FOUNDATION_EXPORT void SokoSavedDepthEffectInstallHooks(void);
 FOUNDATION_EXPORT void SokoSavedDepthSettingsInstallHooks(void);

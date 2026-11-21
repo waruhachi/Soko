@@ -74,16 +74,17 @@ static void SokoInitPoster(void) {
 		return;
 	}
 	if (![SokoPosterLayout isSupported]) return;
+	if (@available(iOS 18.0, *)) {
+		if ([objc_getClass("PRRenderer") instancesRespondToSelector:@selector(floatingView)] &&
+			[objc_getClass("FBSSceneSettings") instancesRespondToSelector:@selector(pui_isComplicationRowConfigured)]) {
+			SokoRendererDepthEffectInstallHooks();
+		}
+	}
 	Class editorClass = objc_getClass("PREditingSceneViewController");
 	if ([editorClass instancesRespondToSelector:@selector(_hasGraphicComplications)]) {
 		SokoEditorGraphicComplicationsInstallHooks();
-		// iOS 16's editor compositor obscures bottom widgets with depth enabled.
-		// Keep that established policy while enabling the iOS 18 editor path.
-		if (@available(iOS 18.0, *)) {
-			if ([editorClass instancesRespondToSelector:@selector(_shouldDepthEffectBeDisallowed)] &&
-				[editorClass instancesRespondToSelector:@selector(_updateSceneSettingsForDepthEffectDisallowed)]) {
-				SokoEditorDepthEffectInstallHooks();
-			}
+		if ([editorClass instancesRespondToSelector:@selector(_shouldDepthEffectBeDisallowed)]) {
+			SokoEditorDepthEffectInstallHooks();
 		}
 	}
 	if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.PosterBoard"] && !SokoInitPosterPreview()) {

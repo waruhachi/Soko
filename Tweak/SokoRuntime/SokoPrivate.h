@@ -25,6 +25,7 @@
 @interface FBSSceneSettings : NSObject
 - (BOOL)pr_isDepthEffectDisallowed;
 - (BOOL)pr_isComplicationRowConfigured;
+- (BOOL)pui_isComplicationRowConfigured;
 @end
 
 @interface FBSMutableSceneSettings : FBSSceneSettings
@@ -34,6 +35,7 @@
 @interface FBScene : NSObject
 @property (nonatomic, readonly) FBSSceneSettings *settings;
 - (void)updateSettings:(FBSSceneSettings *)settings withTransitionContext:(id)context;
+- (void)updateSettingsWithBlock:(void (^)(FBSMutableSceneSettings *settings))block;
 @end
 
 @interface PBUIPosterViewController : UIViewController
@@ -165,8 +167,22 @@
 - (instancetype)initWithBSXPCCoder:(id)coder;
 @end
 
+@interface PRPosterEnvironmentImpl : NSObject
+- (CGRect)contentCutoutBounds;
+- (CGRect)floatingObscurableBounds;
+@end
+
+@interface PRRenderer : NSObject
+@property (nonatomic, readonly) UIView *floatingView;
+@end
+
+@interface PRPosterTitleStyleConfiguration : NSObject
+@property (nonatomic, readonly) BOOL prefersVerticalTitleLayout;
+@end
+
 @interface PRPosterConfiguredProperties : NSObject
 @property (nonatomic, copy) id complicationLayout;
+@property (nonatomic, readonly) PRPosterTitleStyleConfiguration *titleStyleConfiguration;
 @end
 
 @interface PRSPosterConfiguration : NSObject
@@ -210,6 +226,7 @@
 
 @interface PREditingSceneViewController : UIViewController
 @property (nonatomic, readonly) NSString *posterRole;
+@property (nonatomic, readonly) PRPosterConfiguredProperties *configuredProperties;
 @property (nonatomic, readonly, getter=isDismissing) BOOL dismissing;
 @property (nonatomic, readonly) NSArray *complicationContainerViewControllers;
 @property (nonatomic, readonly) UIView *complicationsAddGestureView;
@@ -222,7 +239,7 @@
 - (instancetype)initWithProvider:(id)provider contents:(id)contents configurableOptions:(id)configurableOptions configuredProperties:(PRPosterConfiguredProperties *)configuredProperties additionalInfo:(id)additionalInfo;
 - (BOOL)_hasGraphicComplications;
 - (BOOL)_shouldDepthEffectBeDisallowed;
-- (void)_updateSceneSettingsForDepthEffectDisallowed;
+- (BOOL)_depthEffectDisallowed;
 - (BOOL)_shouldAllowAddComplicationsTapGesture;
 - (BOOL)_shouldAllowAddComplicationsTapGestureForLocation:(long long)location;
 - (void)_updateAddComplicationsTapGestureAllowed;

@@ -1,29 +1,28 @@
 #import "SokoHookSupport.h"
 
-@interface PREditingSceneViewController (SokoDepthEffect)
-@property (nonatomic, strong) NSNumber *soko_bottomDepthRow;
-@end
+static BOOL SokoEditorDepthEligible(PREditingSceneViewController *controller) {
+	if (@available(iOS 18.0, *)) return YES;
+	if (SokoLiquidAssClockEnabled()) return YES;
 
-static void SokoRefreshEditorDepth(PREditingSceneViewController *controller) {
-	BOOL bottom = [SokoPosterLayout editingSceneViewControllerHasBottomWidgetRow:controller];
-	NSNumber *previous = controller.soko_bottomDepthRow;
-	if (previous && previous.boolValue == bottom) return;
-	// Record before publishing; a native scene update can request layout again.
-	controller.soko_bottomDepthRow = @(bottom);
-	[controller _updateSceneSettingsForDepthEffectDisallowed];
+	// Before iOS 18, widgets stay visible over depth only while Soko's dock hosts the bottom row.
+	return [SokoPosterLayout editingSceneViewControllerUsesBottomLayout:controller];
+}
+
+static BOOL SokoEditorDepthDisallowed(PREditingSceneViewController *controller) {
+	if ([controller _shouldDepthEffectBeDisallowed]) return YES;
+
+	id titleStyle = controller.configuredProperties.titleStyleConfiguration;
+	return [titleStyle respondsToSelector:@selector(prefersVerticalTitleLayout)] &&
+		[titleStyle prefersVerticalTitleLayout];
 }
 
 %group SokoEditorDepthEffect
 
 %hook PREditingSceneViewController
 
-%property(nonatomic, strong) NSNumber *soko_bottomDepthRow;
-
 - (BOOL)_shouldDepthEffectBeDisallowed {
-	if (![SokoPosterLayout editingSceneViewControllerHasBottomWidgetRow:self]) return %orig;
+	if (![SokoPosterLayout editingSceneViewControllerEditsLockScreen:self] || !SokoEditorDepthEligible(self)) return %orig;
 
-	// Keep native variant, focus, and provider restrictions. Only the widget
-	// presence check made by this controller's depth predicate is suppressed.
 	const void *previous = gEditorDepthQueryController;
 	gEditorDepthQueryController = (__bridge const void *)self;
 	@try {
@@ -36,21 +35,31 @@ static void SokoRefreshEditorDepth(PREditingSceneViewController *controller) {
 
 - (void)viewDidLayoutSubviews {
 	%orig;
-	SokoRefreshEditorDepth(self);
+
+	if (![SokoPosterLayout editingSceneViewControllerEditsLockScreen:self]) return;
+	FBScene *scene = SokoIvarObject(self, "_scene");
+	if (![scene respondsToSelector:@selector(updateSettingsWithBlock:)] || ![scene.settings respondsToSelector:@selector(pr_isDepthEffectDisallowed)]) return;
+
+	BOOL disallowed = SokoEditorDepthDisallowed(self);
+	if ([scene.settings pr_isDepthEffectDisallowed] == disallowed) return;
+	[scene updateSettingsWithBlock:^(FBSMutableSceneSettings *settings) {
+		[settings pr_setDepthEffectDisallowed:disallowed];
+	}];
 }
 
 %end
 
-%hook PRComplicationContainerViewController
+%end
 
-- (void)viewDidLayoutSubviews {
-	%orig;
-	// LiquidAss lays out its row independently of the editing scene's view.
-	for (UIViewController *parent = self.parentViewController; parent; parent = parent.parentViewController) {
-		if (![parent isKindOfClass:%c(PREditingSceneViewController)]) continue;
-		SokoRefreshEditorDepth((PREditingSceneViewController *)parent);
-		break;
-	}
+%group SokoEditorDepthEffectDisallowed
+
+%hook PREditingSceneViewController
+
+- (BOOL)_depthEffectDisallowed {
+	BOOL disallowed = %orig;
+	if (!disallowed || ![SokoPosterLayout editingSceneViewControllerEditsLockScreen:self]) return disallowed;
+
+	return SokoEditorDepthDisallowed(self);
 }
 
 %end
@@ -59,4 +68,7 @@ static void SokoRefreshEditorDepth(PREditingSceneViewController *controller) {
 
 void SokoEditorDepthEffectInstallHooks(void) {
 	%init(SokoEditorDepthEffect);
+	if ([%c(PREditingSceneViewController) instancesRespondToSelector:@selector(_depthEffectDisallowed)]) {
+		%init(SokoEditorDepthEffectDisallowed);
+	}
 }
