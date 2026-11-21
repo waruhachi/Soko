@@ -199,12 +199,13 @@ static NSHashTable *SokoRegister(NSHashTable *table, id object) {
 
 	gComputingStockLayout = YES;
 	CGRect stockRow = [layoutController frameForElements:kSokoComplicationRowElement variant:kSokoEditingVariant withBoundingRect:boundingRect];
+	CGRect stockFrame = [layoutController complicationRowElementEditingReticleFrameWithBoundingRect:boundingRect];
 	gComputingStockLayout = NO;
 
-	if (CGRectIsNull(row) || CGRectIsNull(stockRow)) return frame;
+	if (CGRectIsNull(row) || CGRectIsNull(stockRow) || CGRectIsNull(stockFrame)) return frame;
 
-	frame.origin.y += CGRectGetMinY(row) - CGRectGetMinY(stockRow);
-	return frame;
+	stockFrame.origin.y += CGRectGetMinY(row) - CGRectGetMinY(stockRow);
+	return stockFrame;
 }
 
 + (CGRect)editingRowFrame {
