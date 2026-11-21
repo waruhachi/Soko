@@ -5,7 +5,7 @@
 <h1 align="center">Soko</h1>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-0a84ff?style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.2.0-0a84ff?style=for-the-badge" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-iOS%2016%E2%80%9318-111111?style=for-the-badge" />
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=for-the-badge" /></a>
   <img alt="Language" src="https://img.shields.io/badge/language-Objective--C%20%26%20Logos-2b2b2b?style=for-the-badge" />
@@ -22,7 +22,9 @@ Soko brings the iOS 26 widget layout to your Lock Screen on iOS 16-18. Your widg
 - Each Lock Screen remembers its own layout, so you can keep different layouts on different wallpapers.
 - Widgets line up with the flashlight and camera buttons, just like on iOS 26.
 - Notifications stay above your widgets, so nothing gets covered.
+- Use the Depth Effect with your widgets — the option stays available in the editor.
 - See the widget row where it will appear while you customize.
+- Works alongside other wallpaper tweaks like LiquidAss, Exiwall, and Gestures16.
 
 ## Open source
 
